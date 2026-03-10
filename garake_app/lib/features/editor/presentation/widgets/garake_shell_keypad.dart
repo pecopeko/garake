@@ -1,6 +1,6 @@
 part of 'garake_shell.dart';
 
-// IMG_2195スタイルのキーパッド。ソフトキー + D-pad + OK + 通話/終了 + ラベルキー。カワイイ風配色。
+// Figmaノード15:2に寄せたキーパッド。上段切替キー + 中段操作キー + 下段4キー。
 class _KeypadSection extends StatelessWidget {
   const _KeypadSection({
     required this.metrics,
@@ -32,27 +32,28 @@ class _KeypadSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<String> bottomLabels = _splitSaveShareLabel(
+      menuLabel: menuKeyLabel,
+      stampLabel: stampKeyLabel,
+      saveShareLabel: saveShareKeyLabel,
+    );
+
     return DecoratedBox(
-      // カワイイ風ピンクグラデーションのキーパッド背景
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Color(0xFFFFF0F5),
-            Color(0xFFFFD6E0),
-            Color(0xFFFFBCD0),
+            Color(0xFFF8D8E8),
+            Color(0xFFF0C0D5),
+            Color(0xFFE8B0C8),
           ],
         ),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.elliptical(
-            metrics.phoneWidth * 0.6,
-            metrics.keypadCurve,
-          ),
-          topRight: Radius.elliptical(
-            metrics.phoneWidth * 0.6,
-            metrics.keypadCurve,
-          ),
+          topLeft: Radius.circular(8 * metrics.scale),
+          topRight: Radius.circular(8 * metrics.scale),
+          bottomLeft: Radius.circular(6 * metrics.scale),
+          bottomRight: Radius.circular(6 * metrics.scale),
         ),
       ),
       child: Padding(
@@ -64,65 +65,87 @@ class _KeypadSection extends StatelessWidget {
         ),
         child: Column(
           children: <Widget>[
-            // ソフトキー 2つ横並び
+            _ModeToggleKey(
+              metrics: metrics,
+              onPressed: () => _triggerKeyPress(onMenuPressed),
+            ),
+            SizedBox(height: 10 * metrics.scale),
             Row(
               children: <Widget>[
-                Expanded(child: _SoftKey(metrics: metrics)),
-                SizedBox(width: metrics.keyGapLarge),
-                Expanded(child: _SoftKey(metrics: metrics)),
+                _SideActionKey(
+                  metrics: metrics,
+                  iconText: '📞',
+                  onPressed: () => _triggerKeyPress(onMenuPressed),
+                ),
+                SizedBox(width: 8 * metrics.scale),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      _SideArrowKey(
+                        metrics: metrics,
+                        label: '◀',
+                        onPressed: () => _triggerKeyPress(onLeftPressed),
+                      ),
+                      SizedBox(width: 4 * metrics.scale),
+                      _CenterNavPad(
+                        metrics: metrics,
+                        onUpPressed: onUpPressed,
+                        onDownPressed: onDownPressed,
+                        onOkPressed: onOkPressed,
+                      ),
+                      SizedBox(width: 4 * metrics.scale),
+                      _SideArrowKey(
+                        metrics: metrics,
+                        label: '▶',
+                        onPressed: () => _triggerKeyPress(onRightPressed),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8 * metrics.scale),
+                _SideActionKey(
+                  metrics: metrics,
+                  iconText: '📕',
+                  onPressed: () => _triggerKeyPress(onSaveSharePressed),
+                ),
               ],
             ),
-            SizedBox(height: metrics.keyGapMedium),
-            // D-pad + 通話/終了ボタン
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  _CallActionKey(metrics: metrics, isCall: true),
-                  SizedBox(width: metrics.keyGapSmall),
-                  Expanded(
-                    child: _NavigationPad(
-                      metrics: metrics,
-                      onUpPressed: onUpPressed,
-                      onDownPressed: onDownPressed,
-                      onLeftPressed: onLeftPressed,
-                      onRightPressed: onRightPressed,
-                      onOkPressed: onOkPressed,
-                    ),
-                  ),
-                  SizedBox(width: metrics.keyGapSmall),
-                  _CallActionKey(metrics: metrics, isCall: false),
-                ],
-              ),
-            ),
-            SizedBox(height: metrics.keyGapMedium),
-            // 下段ラベルキー 3つ（メニュー/スタンプ/保存シェア）
+            SizedBox(height: 10 * metrics.scale),
             Row(
               children: <Widget>[
                 Expanded(
-                  child: _LabelKey(
-                    metrics: metrics,
-                    label: menuKeyLabel,
-                    onPressed: () => _triggerKeyPress(onMenuPressed),
+                  child: _BottomSoftKey(
                     keyId: const Key('menu-button'),
+                    metrics: metrics,
+                    label: bottomLabels[0],
+                    onPressed: () => _triggerKeyPress(onMenuPressed),
                   ),
                 ),
-                SizedBox(width: metrics.keyGapTiny),
+                SizedBox(width: 4 * metrics.scale),
                 Expanded(
-                  child: _LabelKey(
-                    metrics: metrics,
-                    label: stampKeyLabel,
-                    onPressed: () => _triggerKeyPress(onStampPressed),
+                  child: _BottomSoftKey(
                     keyId: const Key('stamp-button'),
+                    metrics: metrics,
+                    label: bottomLabels[1],
+                    onPressed: () => _triggerKeyPress(onStampPressed),
                   ),
                 ),
-                SizedBox(width: metrics.keyGapTiny),
+                SizedBox(width: 4 * metrics.scale),
                 Expanded(
-                  child: _LabelKey(
-                    metrics: metrics,
-                    label: saveShareKeyLabel,
-                    onPressed: () => _triggerKeyPress(onSaveSharePressed),
+                  child: _BottomSoftKey(
                     keyId: const Key('save-share-button'),
+                    metrics: metrics,
+                    label: bottomLabels[2],
+                    onPressed: () => _triggerKeyPress(onSaveSharePressed),
+                  ),
+                ),
+                SizedBox(width: 4 * metrics.scale),
+                Expanded(
+                  child: _BottomSoftKey(
+                    metrics: metrics,
+                    label: bottomLabels[3],
+                    onPressed: () => _triggerKeyPress(onSaveSharePressed),
                   ),
                 ),
               ],
@@ -134,127 +157,185 @@ class _KeypadSection extends StatelessWidget {
   }
 }
 
-// ソフトキー（横線マーク付き）
-class _SoftKey extends StatelessWidget {
-  const _SoftKey({required this.metrics});
+class _ModeToggleKey extends StatelessWidget {
+  const _ModeToggleKey({required this.metrics, required this.onPressed});
+
   final _ShellMetrics metrics;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: metrics.softKeyHeight,
-      decoration: _kawaiiKeyDecoration(metrics),
-      alignment: Alignment.center,
+    return GestureDetector(
+      onTap: onPressed,
       child: Container(
-        width: metrics.lineMarkWidth,
-        height: 3,
-        color: const Color(0xFFA06080),
+        width: 62 * metrics.scale,
+        height: 30 * metrics.scale,
+        alignment: Alignment.center,
+        decoration: _pinkKeyDecoration(
+          metrics,
+          borderColor: const Color(0xFFC898B0),
+          topColor: const Color(0xFFF0D0E0),
+          bottomColor: const Color(0xFFE0B0C8),
+          radius: 3 * metrics.scale,
+        ),
+        child: Text(
+          '外cam  ⇄',
+          style: TextStyle(
+            color: const Color(0xFF704060),
+            fontSize: 10 * metrics.scale,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
 }
 
-// 通話/終了ボタン（ハート型アクセント）
-class _CallActionKey extends StatelessWidget {
-  const _CallActionKey({required this.metrics, required this.isCall});
+class _SideActionKey extends StatelessWidget {
+  const _SideActionKey({
+    required this.metrics,
+    required this.iconText,
+    required this.onPressed,
+  });
+
   final _ShellMetrics metrics;
-  final bool isCall;
+  final String iconText;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: metrics.callKeyWidth,
-      height: metrics.callKeyHeight,
-      decoration: _kawaiiKeyDecoration(metrics),
-      child: Icon(
-        isCall ? Icons.call : Icons.call_end,
-        size: metrics.callIconSize,
-        color: isCall ? const Color(0xFF2AB65D) : AppTheme.heartRed,
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 48 * metrics.scale,
+        height: 32 * metrics.scale,
+        alignment: Alignment.center,
+        decoration: _silverKeyDecoration(metrics),
+        child: Text(iconText, style: TextStyle(fontSize: 16 * metrics.scale)),
       ),
     );
   }
 }
 
-// D-pad（十字キー + OKボタン）
-class _NavigationPad extends StatelessWidget {
-  const _NavigationPad({
+class _SideArrowKey extends StatelessWidget {
+  const _SideArrowKey({
+    required this.metrics,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final _ShellMetrics metrics;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 26 * metrics.scale,
+        height: 22 * metrics.scale,
+        alignment: Alignment.center,
+        decoration: _silverKeyDecoration(metrics),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: const Color(0xFF5D91B8),
+            fontSize: 10 * metrics.scale,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CenterNavPad extends StatelessWidget {
+  const _CenterNavPad({
     required this.metrics,
     required this.onUpPressed,
     required this.onDownPressed,
-    required this.onLeftPressed,
-    required this.onRightPressed,
     required this.onOkPressed,
   });
 
   final _ShellMetrics metrics;
   final VoidCallback onUpPressed;
   final VoidCallback onDownPressed;
-  final VoidCallback onLeftPressed;
-  final VoidCallback onRightPressed;
   final VoidCallback onOkPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: metrics.navPadHeight,
-      decoration: _kawaiiKeyDecoration(metrics),
-      child: Stack(
-        alignment: Alignment.center,
+    return SizedBox(
+      width: 44 * metrics.scale,
+      height: 72 * metrics.scale,
+      child: Column(
         children: <Widget>[
-          // 上矢印
-          Positioned(
-            top: 2,
-            child: _ArrowKey(
-              metrics: metrics,
-              icon: Icons.keyboard_arrow_up,
-              onPressed: onUpPressed,
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _triggerKeyPress(onUpPressed),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: _pinkKeyDecoration(
+                  metrics,
+                  borderColor: const Color(0xFFB898A8),
+                  topColor: const Color(0xFFF0E0E8),
+                  bottomColor: const Color(0xFFD0B0C0),
+                  radius: 3 * metrics.scale,
+                ),
+                child: Text(
+                  '▲',
+                  style: TextStyle(
+                    color: const Color(0xFF906080),
+                    fontSize: 10 * metrics.scale,
+                  ),
+                ),
+              ),
             ),
           ),
-          // 下矢印
-          Positioned(
-            bottom: 2,
-            child: _ArrowKey(
-              metrics: metrics,
-              icon: Icons.keyboard_arrow_down,
-              onPressed: onDownPressed,
-            ),
-          ),
-          // 左矢印
-          Positioned(
-            left: 2,
-            child: _ArrowKey(
-              metrics: metrics,
-              icon: Icons.keyboard_arrow_left,
-              onPressed: onLeftPressed,
-            ),
-          ),
-          // 右矢印
-          Positioned(
-            right: 2,
-            child: _ArrowKey(
-              metrics: metrics,
-              icon: Icons.keyboard_arrow_right,
-              onPressed: onRightPressed,
-            ),
-          ),
-          // 中央OKボタン
+          SizedBox(height: 2 * metrics.scale),
           GestureDetector(
             key: const Key('ok-button'),
             onTap: () => _triggerKeyPress(onOkPressed),
             child: Container(
-              width: metrics.okWidth,
-              height: metrics.okHeight,
-              decoration: _kawaiiKeyDecoration(
-                metrics,
-                radius: metrics.okRadius,
-              ),
+              width: 44 * metrics.scale,
+              height: 28 * metrics.scale,
               alignment: Alignment.center,
+              decoration: _pinkKeyDecoration(
+                metrics,
+                borderColor: const Color(0xFFA08098),
+                topColor: const Color(0xFFFFFFFF),
+                bottomColor: const Color(0xFFE0C8D5),
+                radius: 3 * metrics.scale,
+              ),
               child: Text(
                 'OK',
                 style: TextStyle(
-                  fontSize: metrics.okTextSize,
+                  color: const Color(0xFF503040),
+                  fontSize: 14 * metrics.scale,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF6A2040),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 2 * metrics.scale),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _triggerKeyPress(onDownPressed),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: _pinkKeyDecoration(
+                  metrics,
+                  borderColor: const Color(0xFFB898A8),
+                  topColor: const Color(0xFFF0E0E8),
+                  bottomColor: const Color(0xFFD0B0C0),
+                  radius: 3 * metrics.scale,
+                ),
+                child: Text(
+                  '▼',
+                  style: TextStyle(
+                    color: const Color(0xFF906080),
+                    fontSize: 10 * metrics.scale,
+                  ),
                 ),
               ),
             ),
@@ -265,46 +346,18 @@ class _NavigationPad extends StatelessWidget {
   }
 }
 
-// 矢印キー個別
-class _ArrowKey extends StatelessWidget {
-  const _ArrowKey({
-    required this.metrics,
-    required this.icon,
-    required this.onPressed,
-  });
-  final _ShellMetrics metrics;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _triggerKeyPress(onPressed),
-      child: SizedBox(
-        width: metrics.arrowKeyWidth,
-        height: metrics.arrowKeyHeight,
-        child: Icon(
-          icon,
-          size: metrics.arrowIconSize,
-          color: const Color(0xFFA06080),
-        ),
-      ),
-    );
-  }
-}
-
-// ラベル付きキー（メニュー/スタンプ/保存シェア）
-class _LabelKey extends StatelessWidget {
-  const _LabelKey({
+class _BottomSoftKey extends StatelessWidget {
+  const _BottomSoftKey({
     required this.metrics,
     required this.label,
     required this.onPressed,
-    required this.keyId,
+    this.keyId,
   });
+
   final _ShellMetrics metrics;
   final String label;
   final VoidCallback onPressed;
-  final Key keyId;
+  final Key? keyId;
 
   @override
   Widget build(BuildContext context) {
@@ -312,17 +365,23 @@ class _LabelKey extends StatelessWidget {
       key: keyId,
       onTap: onPressed,
       child: Container(
-        height: metrics.labelKeyHeight,
-        decoration: _kawaiiKeyDecoration(metrics),
+        height: 34 * metrics.scale,
         alignment: Alignment.center,
+        decoration: _pinkKeyDecoration(
+          metrics,
+          borderColor: const Color(0xFFB098A8),
+          topColor: const Color(0xFFF8F0F4),
+          bottomColor: const Color(0xFFD8C0D0),
+          radius: 4 * metrics.scale,
+        ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             label,
             style: TextStyle(
-              fontSize: metrics.labelTextSize,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF6A2040),
+              color: const Color(0xFF503040),
+              fontSize: 12 * metrics.scale,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -331,27 +390,61 @@ class _LabelKey extends StatelessWidget {
   }
 }
 
-// カワイイ風ボタンのデコレーション。ピンクグラデーション。
-BoxDecoration _kawaiiKeyDecoration(_ShellMetrics metrics, {double? radius}) {
+BoxDecoration _pinkKeyDecoration(
+  _ShellMetrics metrics, {
+  required Color borderColor,
+  required Color topColor,
+  required Color bottomColor,
+  required double radius,
+}) {
   return BoxDecoration(
-    borderRadius: BorderRadius.circular(radius ?? metrics.keyRadius),
-    gradient: const LinearGradient(
+    borderRadius: BorderRadius.circular(radius),
+    gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: <Color>[Color(0xFFFFF5F8), Color(0xFFFFDAE5)],
+      colors: <Color>[topColor, bottomColor],
     ),
-    border: Border.all(color: const Color(0xFFE0A0B8), width: 1),
+    border: Border.all(color: borderColor, width: 1.2 * metrics.scale),
     boxShadow: const <BoxShadow>[
-      BoxShadow(
-        color: Color(0x28CC6080),
-        blurRadius: 1.5,
-        offset: Offset(0, 1),
-      ),
+      BoxShadow(color: Color(0x22000000), blurRadius: 2, offset: Offset(0, 1)),
     ],
   );
 }
 
-// レイアウト寸法。全画面ガラケー用。
+BoxDecoration _silverKeyDecoration(_ShellMetrics metrics) {
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(4 * metrics.scale),
+    gradient: const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: <Color>[Color(0xFFE8E8E8), Color(0xFFD0D0D0), Color(0xFFC0C0C0)],
+    ),
+    border: Border.all(
+      color: const Color(0xFFA0A0A0),
+      width: 1.2 * metrics.scale,
+    ),
+    boxShadow: const <BoxShadow>[
+      BoxShadow(color: Color(0x22000000), blurRadius: 2, offset: Offset(0, 1)),
+    ],
+  );
+}
+
+List<String> _splitSaveShareLabel({
+  required String menuLabel,
+  required String stampLabel,
+  required String saveShareLabel,
+}) {
+  final List<String> splitBySlash = saveShareLabel
+      .split(RegExp(r'[/／]'))
+      .map((String value) => value.trim())
+      .where((String value) => value.isNotEmpty)
+      .toList(growable: false);
+  final String saveLabel = splitBySlash.isNotEmpty ? splitBySlash.first : '保存';
+  final String shareLabel = splitBySlash.length > 1 ? splitBySlash[1] : 'シェア';
+  return <String>[menuLabel, stampLabel, saveLabel, shareLabel];
+}
+
+// 画面全体の比率に合わせる寸法定義。
 class _ShellMetrics {
   const _ShellMetrics._({
     required this.phoneWidth,
@@ -363,7 +456,7 @@ class _ShellMetrics {
     return _ShellMetrics._(
       phoneWidth: viewport.width,
       phoneHeight: viewport.height,
-      scale: viewport.width / 320,
+      scale: viewport.width / 340,
     );
   }
 
@@ -371,57 +464,30 @@ class _ShellMetrics {
   final double phoneHeight;
   final double scale;
 
-  // 筐体
-  double get phoneCornerRadius => 18 * scale;
-  double get hingeHeight => 10 * scale;
+  double get phoneCornerRadius => 16 * scale;
 
-  // スピーカー＋カメラエリア
   double get speakerTopPad => 10 * scale;
   double get speakerBottomPad => 6 * scale;
-  double get cameraLensSize => 14 * scale;
+  double get cameraLensSize => 12 * scale;
 
-  // フレーム（ネストベゼル）
-  double get frameOuterPad => 12 * scale;
-  double get frameOuterRadius => 10 * scale;
+  double get frameOuterPad => 16 * scale;
+  double get frameOuterRadius => 4 * scale;
   double get frameMiddlePad => 6 * scale;
-  double get frameMiddleRadius => 7 * scale;
-  double get frameInnerPad => 4 * scale;
-  double get screenRadius => 4 * scale;
+  double get frameMiddleRadius => 2 * scale;
+  double get frameInnerPad => 2 * scale;
+  double get screenRadius => 2 * scale;
 
-  // ステータスバー
-  double get statusBarHeight => 24 * scale;
-  double get statusHorizontalInset => 8 * scale;
-  double get statusIconText => 11 * scale;
-  double get statusMetaText => 8 * scale;
+  double get statusBarHeight => 21 * scale;
+  double get statusHorizontalInset => 6 * scale;
+  double get statusIconText => 10 * scale;
+  double get statusMetaText => 10 * scale;
   double get statusGap => 5 * scale;
 
-  // バッテリー
-  double get batteryWidth => 22 * scale;
-  double get batteryHeight => 12 * scale;
+  double get batteryWidth => 16 * scale;
+  double get batteryHeight => 8 * scale;
 
-  // キーパッド
-  double get keypadCurve => 18 * scale;
-  double get keypadHorizontalInset => 16 * scale;
+  double get keypadCurve => 8 * scale;
+  double get keypadHorizontalInset => 12 * scale;
   double get keypadTopInset => 10 * scale;
   double get keypadBottomInset => 12 * scale;
-  double get keyRadius => 8 * scale;
-  double get softKeyHeight => 32 * scale;
-  double get lineMarkWidth => 28 * scale;
-  double get keyGapLarge => 72 * scale;
-  double get keyGapMedium => 7 * scale;
-  double get keyGapSmall => 7 * scale;
-  double get keyGapTiny => 5 * scale;
-  double get callKeyWidth => 54 * scale;
-  double get callKeyHeight => 42 * scale;
-  double get callIconSize => 22 * scale;
-  double get navPadHeight => 82 * scale;
-  double get arrowKeyWidth => 34 * scale;
-  double get arrowKeyHeight => 24 * scale;
-  double get arrowIconSize => 24 * scale;
-  double get okWidth => 74 * scale;
-  double get okHeight => 44 * scale;
-  double get okRadius => 12 * scale;
-  double get okTextSize => 17 * scale;
-  double get labelKeyHeight => 44 * scale;
-  double get labelTextSize => 12 * scale;
 }

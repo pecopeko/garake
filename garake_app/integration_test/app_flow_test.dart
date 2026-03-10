@@ -71,7 +71,15 @@ class _StubExportRepository implements ExportRepository {
   }
 
   @override
+  Future<SaveResult> saveVideoFile(String filePath) async {
+    return SaveResult(filePath: filePath, createdAt: DateTime(2026, 2, 22));
+  }
+
+  @override
   Future<void> shareImage(Uint8List bytes, {String? text}) async {}
+
+  @override
+  Future<void> shareVideoFile(String filePath, {String? text}) async {}
 }
 
 void main() {

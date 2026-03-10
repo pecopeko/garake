@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/canvas_transform.dart';
 import '../../domain/entities/sticker_item.dart';
-import 'garake_home_screen.dart';
+import 'garake_home_display.dart';
 
 class EditorCanvas extends StatelessWidget {
   const EditorCanvas({
@@ -19,6 +19,7 @@ class EditorCanvas extends StatelessWidget {
     required this.filteredBytes,
     required this.imageSize,
     required this.stickers,
+    required this.selectedSourceIndex,
     required this.onCanvasTransformChanged,
     this.onCameraPressed,
     this.onEditPhotoPressed,
@@ -27,20 +28,21 @@ class EditorCanvas extends StatelessWidget {
   final Uint8List? filteredBytes;
   final Size? imageSize;
   final List<StickerItem> stickers;
+  final int selectedSourceIndex;
   final ValueChanged<CanvasTransform> onCanvasTransformChanged;
   final VoidCallback? onCameraPressed;
   final VoidCallback? onEditPhotoPressed;
 
   @override
   Widget build(BuildContext context) {
-    // 写真未読み込み時はガラケー風ホーム画面を表示。
+    // 写真未読み込み時は撮影/編集の入口を液晶内に表示する。
     if (filteredBytes == null || imageSize == null) {
-      return GarakeHomeScreen(
+      return _SourceSelectionView(
+        selectedIndex: selectedSourceIndex,
         onCameraPressed: onCameraPressed,
         onEditPhotoPressed: onEditPhotoPressed,
       );
     }
-
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -117,6 +119,28 @@ class EditorCanvas extends StatelessWidget {
     final double width = height * imageAspect;
     final double left = (viewport.width - width) / 2;
     return Rect.fromLTWH(left, 0, width, height);
+  }
+}
+
+// 撮影前の液晶画面。カメラ/ギャラリー導線だけを簡潔に見せる。
+class _SourceSelectionView extends StatelessWidget {
+  const _SourceSelectionView({
+    required this.selectedIndex,
+    this.onCameraPressed,
+    this.onEditPhotoPressed,
+  });
+
+  final int selectedIndex;
+  final VoidCallback? onCameraPressed;
+  final VoidCallback? onEditPhotoPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GarakeHomeDisplay(
+      selectedIndex: selectedIndex,
+      onCameraPressed: onCameraPressed,
+      onEditPhotoPressed: onEditPhotoPressed,
+    );
   }
 }
 

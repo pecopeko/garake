@@ -1,39 +1,39 @@
-// Orchestrates image import, retro filtering, keypad sticker editing, and export actions.
+// Orchestrates image import, face-retouch rerendering, keypad sticker editing, and export actions.
 /*
 Dependency Memo
-- Depends on: domain entities/repositories and app_exception.dart for flow control.
-- Requires methods: pickFromCamera(), pickFromGallery(), applyGarakeFilter(), compose(), saveJpeg(), shareImage().
-- Provides methods: startSession(), startSessionFromBytes(), addSticker(), deleteSelectedSticker(), onArrowUp(), onArrowDown(), onArrowLeft(), onArrowRight(), onOkPressed(), updateCanvasTransform(), saveCurrentImage(), shareCurrentImage().
+- Depends on: domain entities/repositories, editor_image_pipeline.dart, and app_exception.dart for flow control.
+- Requires methods: pickFromCamera(), pickFromGallery(), loadSessionData(), renderFilteredPreview(), compose(), saveJpeg(), shareImage().
+- Provides methods: startSession(), startSessionFromBytes(), updateFaceRetouchLevel(), addSticker(), deleteSelectedSticker(), onArrowUp(), onArrowDown(), onArrowLeft(), onArrowRight(), onOkPressed(), updateCanvasTransform(), saveCurrentImage(), shareCurrentImage().
 */
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
 
 import '../../../core/errors/app_exception.dart';
 import '../domain/entities/canvas_transform.dart';
 import '../domain/entities/editor_session.dart';
+import '../domain/entities/face_retouch_level.dart';
 import '../domain/entities/filter_config.dart';
 import '../domain/entities/sticker_item.dart';
 import '../domain/enums/image_input_type.dart';
 import '../domain/repositories/export_repository.dart';
-import '../domain/repositories/filter_engine.dart';
 import '../domain/repositories/image_source_repository.dart';
 import '../domain/repositories/sticker_composer.dart';
+import 'editor_image_pipeline.dart';
 import 'editor_state.dart';
 
 class EditorController extends StateNotifier<EditorState> {
   EditorController({
     required ImageSourceRepository imageSourceRepository,
-    required FilterEngine filterEngine,
+    required EditorImagePipeline imagePipeline,
     required StickerComposer stickerComposer,
     required ExportRepository exportRepository,
     required FilterConfig filterConfig,
     DateTime Function()? now,
   }) : _imageSourceRepository = imageSourceRepository,
-       _filterEngine = filterEngine,
+       _imagePipeline = imagePipeline,
        _stickerComposer = stickerComposer,
        _exportRepository = exportRepository,
        _filterConfig = filterConfig,
@@ -41,7 +41,7 @@ class EditorController extends StateNotifier<EditorState> {
        super(const EditorState());
 
   final ImageSourceRepository _imageSourceRepository;
-  final FilterEngine _filterEngine;
+  final EditorImagePipeline _imagePipeline;
   final StickerComposer _stickerComposer;
   final ExportRepository _exportRepository;
   final FilterConfig _filterConfig;
@@ -130,30 +130,21 @@ class EditorController extends StateNotifier<EditorState> {
       state = state.copyWith(status: EditorStatus.processing);
     }
 
-    final img.Image? decoded = img.decodeImage(inputBytes);
-    if (decoded == null) {
-      throw const AppException('読み込めない画像形式です。');
-    }
-
     final DateTime stampDate = _now();
-    final Uint8List filteredBytes = await _filterEngine.applyGarakeFilter(
-      inputBytes,
-      _filterConfig,
-      stampDate,
-    );
+    final EditorImageLoadResult loadResult = await _imagePipeline
+        .loadSessionData(inputBytes, stampDate);
 
     state = state.copyWith(
       status: EditorStatus.ready,
       keypadMode: KeypadMode.move,
       session: EditorSession(
         originalBytes: inputBytes,
-        filteredBytes: filteredBytes,
-        originalImageSize: Size(
-          decoded.width.toDouble(),
-          decoded.height.toDouble(),
-        ),
+        filteredBytes: loadResult.filteredBytes,
+        originalImageSize: loadResult.originalImageSize,
         stickers: const <StickerItem>[],
         stampDate: stampDate,
+        detectedFaces: loadResult.detectedFaces,
+        faceRetouchLevel: FaceRetouchLevel.off,
         filterConfig: _filterConfig,
         canvasTransform: CanvasTransform.identity,
       ),
@@ -273,6 +264,50 @@ class EditorController extends StateNotifier<EditorState> {
     state = state.copyWith(
       session: session.copyWith(canvasTransform: transform),
     );
+  }
+
+  Future<void> updateFaceRetouchLevel(FaceRetouchLevel level) async {
+    final EditorSession? session = state.session;
+    if (session == null || state.isBusy) {
+      return;
+    }
+    if (session.faceRetouchLevel == level) {
+      state = state.copyWith(infoMessage: '顔補正は ${level.menuLabel} のままです。');
+      return;
+    }
+    if (level.isEnabled && !session.canRetouchFace) {
+      state = state.copyWith(errorMessage: '顔が見つからなかったため盛れ加工できません。');
+      return;
+    }
+
+    state = state.copyWith(
+      status: EditorStatus.processing,
+      clearErrorMessage: true,
+      clearInfoMessage: true,
+    );
+
+    try {
+      final Uint8List filteredBytes = await _imagePipeline
+          .renderFilteredPreview(
+            inputBytes: session.originalBytes,
+            stampDate: session.stampDate,
+            detectedFaces: session.detectedFaces,
+            faceRetouchLevel: level,
+          );
+      state = state.copyWith(
+        status: EditorStatus.ready,
+        session: session.copyWith(
+          filteredBytes: filteredBytes,
+          faceRetouchLevel: level,
+        ),
+        infoMessage: '顔補正を ${level.menuLabel} にしました。',
+      );
+    } catch (_) {
+      state = state.copyWith(
+        status: EditorStatus.ready,
+        errorMessage: '顔補正の更新に失敗しました。',
+      );
+    }
   }
 
   Future<void> saveCurrentImage() async {

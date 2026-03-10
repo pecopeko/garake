@@ -1,9 +1,9 @@
-// Persists JPEG bytes to photo library with fallback and opens iOS share sheet.
+// Persists processed photos and recorded videos to the gallery and share sheet.
 /*
 Dependency Memo
 - Depends on: export_repository.dart and save_result.dart contracts.
-- Requires methods: ImageGallerySaver.saveImage(), Permission.photosAddOnly.request(), SharePlus.instance.share().
-- Provides methods: saveJpeg(), shareImage().
+- Requires methods: ImageGallerySaver.saveImage(), saveFile(), Permission.photosAddOnly.request(), SharePlus.instance.share().
+- Provides methods: saveJpeg(), saveVideoFile(), shareImage(), shareVideoFile().
 */
 import 'dart:io';
 import 'dart:typed_data';
@@ -53,6 +53,34 @@ class ExportRepositoryImpl implements ExportRepository {
   }
 
   @override
+  Future<SaveResult> saveVideoFile(String filePath) async {
+    final File sourceFile = File(filePath);
+    if (!await sourceFile.exists()) {
+      throw const AppException('保存する動画が見つかりません。');
+    }
+
+    final DateTime created = _now();
+    final PermissionStatus status = await _photosPermission.request();
+    if (!(status.isGranted || status.isLimited || status.isProvisional)) {
+      throw const AppException('写真アプリに保存する権限がありません。設定をご確認ください。');
+    }
+
+    final dynamic result = await ImageGallerySaver.saveFile(
+      filePath,
+      name: 'garake_${created.millisecondsSinceEpoch}',
+      isReturnPathOfIOS: true,
+    );
+    if (!_isSaveSuccess(result)) {
+      throw const AppException('動画の保存に失敗しました。');
+    }
+
+    return SaveResult(
+      filePath: _extractSavedPath(result) ?? filePath,
+      createdAt: created,
+    );
+  }
+
+  @override
   Future<void> shareImage(Uint8List bytes, {String? text}) async {
     final File file = await _writeTempJpeg(bytes, prefix: 'garake_share');
     await SharePlus.instance.share(
@@ -61,6 +89,23 @@ class ExportRepositoryImpl implements ExportRepository {
         text: text,
         subject: 'ガラケーカメラ',
         // iPadでも共有シートを安定表示するための既定アンカー位置。
+        sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+      ),
+    );
+  }
+
+  @override
+  Future<void> shareVideoFile(String filePath, {String? text}) async {
+    final File file = File(filePath);
+    if (!await file.exists()) {
+      throw const AppException('共有する動画が見つかりません。');
+    }
+
+    await SharePlus.instance.share(
+      ShareParams(
+        files: <XFile>[XFile(file.path, mimeType: _videoMimeType(file.path))],
+        text: text,
+        subject: 'ガラケーカメラ',
         sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
       ),
     );
@@ -96,5 +141,13 @@ class ExportRepositoryImpl implements ExportRepository {
       }
     }
     return null;
+  }
+
+  String _videoMimeType(String filePath) {
+    final String lowerPath = filePath.toLowerCase();
+    if (lowerPath.endsWith('.mov')) {
+      return 'video/quicktime';
+    }
+    return 'video/mp4';
   }
 }

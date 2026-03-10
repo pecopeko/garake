@@ -18,7 +18,7 @@ class PlatformPhoneViewport extends StatelessWidget {
     this.maxPhoneWidth = 430,
     this.minPhoneWidth = 320,
     this.phoneAspectRatio = 9 / 19.5,
-    this.desktopBackground = const Color(0xFF12070D),
+    this.desktopBackground = const Color(0xFFE8E0E8),
   });
 
   final Widget child;
@@ -54,9 +54,9 @@ class PlatformPhoneViewport extends StatelessWidget {
           decoration: BoxDecoration(
             color: desktopBackground,
             gradient: const RadialGradient(
-              center: Alignment(0, -0.2),
+              center: Alignment(0, -0.25),
               radius: 1.0,
-              colors: <Color>[Color(0xFF28111D), Color(0xFF12070D)],
+              colors: <Color>[Color(0xFFF1ECF1), Color(0xFFE8E0E8)],
             ),
           ),
           child: Center(

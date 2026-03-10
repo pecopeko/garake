@@ -20,7 +20,7 @@ class GarakeApp extends StatelessWidget {
       title: 'ガラケーカメラ',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
-      initialRoute: AppRouter.homeRoute,
+      initialRoute: AppRouter.launchRoute,
       routes: AppRouter.routes(),
       builder: (BuildContext context, Widget? child) {
         // Webではスマホ幅に寄せて、Figmaと同じ見た目で調整しやすくする。

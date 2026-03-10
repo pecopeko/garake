@@ -24,6 +24,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ガラケー風加工のために写真を撮影します。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>動画撮影時の音声を録音するために利用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ガラケー風加工する写真を選択するために利用します。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

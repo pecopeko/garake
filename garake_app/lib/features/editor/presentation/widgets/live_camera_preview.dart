@@ -1,4 +1,4 @@
-// Renders an in-app camera preview so capture can stay inside the garake shell.
+// Renders an in-app camera preview so photo and video capture stay inside the garake shell.
 /*
 Dependency Memo
 - Depends on: camera.dart for live camera frame rendering.
@@ -14,11 +14,15 @@ class LiveCameraPreview extends StatelessWidget {
     required this.controller,
     required this.isInitializing,
     required this.errorMessage,
+    required this.statusLabel,
+    required this.hintLabel,
   });
 
   final CameraController? controller;
   final bool isInitializing;
   final String? errorMessage;
+  final String statusLabel;
+  final String hintLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +95,56 @@ class LiveCameraPreview extends StatelessWidget {
           ),
         ),
         IgnorePointer(child: CustomPaint(painter: _ScanlinePainter())),
+        IgnorePointer(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _PreviewBadge(
+                  label: statusLabel,
+                  backgroundColor: const Color(0xCC2B1A25),
+                ),
+                const Spacer(),
+                _PreviewBadge(
+                  label: hintLabel,
+                  backgroundColor: const Color(0xCC132E2C),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _PreviewBadge extends StatelessWidget {
+  const _PreviewBadge({required this.label, required this.backgroundColor});
+
+  final String label;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0x80E9F0FF)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFFF2F6FF),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -80,9 +80,17 @@ class _FakeExportRepository implements ExportRepository {
   }
 
   @override
+  Future<SaveResult> saveVideoFile(String filePath) async {
+    return SaveResult(filePath: filePath, createdAt: DateTime(2026, 2, 22));
+  }
+
+  @override
   Future<void> shareImage(Uint8List bytes, {String? text}) async {
     shareCount += 1;
   }
+
+  @override
+  Future<void> shareVideoFile(String filePath, {String? text}) async {}
 }
 
 Uint8List _createJpeg({required int width, required int height}) {

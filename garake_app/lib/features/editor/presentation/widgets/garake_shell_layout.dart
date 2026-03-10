@@ -44,93 +44,58 @@ class _PhoneBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        // 上部：画面エリア（リアルフレーム付き）
-        Expanded(
-          flex: 58,
-          child: _DisplaySection(
-            metrics: metrics,
-            preview: preview,
-            menuWidget: menuWidget,
-            photoLoaded: photoLoaded,
-            modeLabel: modeLabel,
-            selectionLabel: selectionLabel,
-            systemMessage: systemMessage,
-          ),
-        ),
-        // ヒンジ帯
-        _HingeBand(metrics: metrics),
-        // 下部：キーパッド
-        Expanded(
-          flex: 42,
-          child: _KeypadSection(
-            metrics: metrics,
-            onMenuPressed: onMenuPressed,
-            onStampPressed: onStampPressed,
-            onSaveSharePressed: onSaveSharePressed,
-            onUpPressed: onUpPressed,
-            onDownPressed: onDownPressed,
-            onLeftPressed: onLeftPressed,
-            onRightPressed: onRightPressed,
-            onOkPressed: onOkPressed,
-            menuKeyLabel: menuKeyLabel,
-            stampKeyLabel: stampKeyLabel,
-            saveShareKeyLabel: saveShareKeyLabel,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ヒンジ帯。折りたたみ部分のメタリックな横帯。
-class _HingeBand extends StatelessWidget {
-  const _HingeBand({required this.metrics});
-  final _ShellMetrics metrics;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      height: metrics.hingeHeight,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Color(0xFF3A1828),
-            Color(0xFF5A2840),
-            Color(0xFF6A3050),
-            Color(0xFF5A2840),
-            Color(0xFF3A1828),
+            Color(0xFFF5C0D8),
+            Color(0xFFF0A8C8),
+            Color(0xFFE890B8),
+            Color(0xFFF0A8C8),
+            Color(0xFFF5C0D8),
           ],
-          stops: <double>[0.0, 0.25, 0.5, 0.75, 1.0],
         ),
+        borderRadius: BorderRadius.circular(metrics.phoneCornerRadius),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x59000000),
+            blurRadius: 20,
+            offset: Offset(4, 6),
+          ),
+        ],
       ),
-      child: Stack(
+      child: Column(
         children: <Widget>[
-          // ヒンジの光沢ライン
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: Container(height: 1, color: const Color(0x40FFB3C6)),
+          // 画面エリアは上部の約2/3を占有する。
+          Expanded(
+            flex: 67,
+            child: _DisplaySection(
+              metrics: metrics,
+              preview: preview,
+              menuWidget: menuWidget,
+              photoLoaded: photoLoaded,
+              modeLabel: modeLabel,
+              selectionLabel: selectionLabel,
+              systemMessage: systemMessage,
+            ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(height: 1, color: const Color(0x30FFB3C6)),
-          ),
-          // ヒンジ中央のくぼみ
-          Center(
-            child: Container(
-              width: metrics.phoneWidth * 0.35,
-              height: 2,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A0E1C),
-                borderRadius: BorderRadius.circular(1),
-              ),
+          Expanded(
+            flex: 33,
+            child: _KeypadSection(
+              metrics: metrics,
+              onMenuPressed: onMenuPressed,
+              onStampPressed: onStampPressed,
+              onSaveSharePressed: onSaveSharePressed,
+              onUpPressed: onUpPressed,
+              onDownPressed: onDownPressed,
+              onLeftPressed: onLeftPressed,
+              onRightPressed: onRightPressed,
+              onOkPressed: onOkPressed,
+              menuKeyLabel: menuKeyLabel,
+              stampKeyLabel: stampKeyLabel,
+              saveShareKeyLabel: saveShareKeyLabel,
             ),
           ),
         ],
@@ -162,12 +127,11 @@ class _DisplaySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      // 筐体全体の背景（ダークベリー）
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFF200E18), Color(0xFF180810)],
+          colors: <Color>[Color(0xFFF5C0D8), Color(0xFFE8A0B8)],
         ),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(metrics.phoneCornerRadius),
@@ -176,33 +140,28 @@ class _DisplaySection extends StatelessWidget {
       ),
       child: Column(
         children: <Widget>[
-          // スピーカー＋カメラエリア
           _SpeakerArea(metrics: metrics),
-          // メイン画面（多重ベゼル）
           Expanded(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 metrics.frameOuterPad,
                 0,
                 metrics.frameOuterPad,
-                metrics.frameOuterPad * 0.6,
+                8 * metrics.scale,
               ),
               child: Container(
-                // 外枠：暗いベゼル（筐体フレーム）
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(metrics.frameOuterRadius),
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: <Color>[
-                      Color(0xFF3A1828),
-                      Color(0xFF2D1520),
-                      Color(0xFF1A0A10),
-                    ],
+                    colors: <Color>[Color(0xFF1A1A1A), Color(0xFF232323)],
                   ),
-                  border: Border.all(color: const Color(0xFF5A2840), width: 2),
+                  border: Border.all(
+                    color: const Color(0xFF2F2F2F),
+                    width: 1.5,
+                  ),
                   boxShadow: const <BoxShadow>[
-                    // 内側にインセットシャドウっぽい効果
                     BoxShadow(
                       color: Color(0x40000000),
                       blurRadius: 4,
@@ -212,25 +171,23 @@ class _DisplaySection extends StatelessWidget {
                 ),
                 padding: EdgeInsets.all(metrics.frameMiddlePad),
                 child: Container(
-                  // 中枠：少し明るいベゼル＋ハイライト
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(
                       metrics.frameMiddleRadius,
                     ),
-                    color: const Color(0xFF0E0508),
+                    color: const Color(0xFF111111),
                     border: Border.all(
-                      color: const Color(0xFF6A3550),
-                      width: 1.5,
+                      color: const Color(0xFF363636),
+                      width: 1.0,
                     ),
                   ),
                   padding: EdgeInsets.all(metrics.frameInnerPad),
                   child: Container(
-                    // 最内枠：LCD画面のフレーム
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(metrics.screenRadius),
-                      color: const Color(0xFF050205),
+                      color: const Color(0xFF050510),
                       border: Border.all(
-                        color: const Color(0xFF3A1A28),
+                        color: const Color(0xFF161820),
                         width: 1,
                       ),
                     ),
@@ -240,14 +197,12 @@ class _DisplaySection extends StatelessWidget {
                       ),
                       child: Column(
                         children: <Widget>[
-                          // ステータスバー
                           _StatusBar(
                             metrics: metrics,
                             photoLoaded: photoLoaded,
                             modeLabel: modeLabel,
                             selectionLabel: selectionLabel,
                           ),
-                          // メインコンテンツ
                           Expanded(
                             child: Stack(
                               fit: StackFit.expand,
@@ -270,19 +225,6 @@ class _DisplaySection extends StatelessWidget {
               ),
             ),
           ),
-          // 画面下のメーカーロゴ風テキスト
-          Padding(
-            padding: EdgeInsets.only(bottom: 4 * metrics.scale),
-            child: Text(
-              '✿ garake ✿',
-              style: TextStyle(
-                fontSize: 7 * metrics.scale,
-                color: const Color(0xFF4A2535),
-                fontWeight: FontWeight.w600,
-                letterSpacing: 2.0,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -297,123 +239,25 @@ class _SpeakerArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        metrics.frameOuterPad,
-        metrics.speakerTopPad,
-        metrics.frameOuterPad,
-        metrics.speakerBottomPad,
+      padding: EdgeInsets.only(
+        top: metrics.speakerTopPad,
+        bottom: metrics.speakerBottomPad,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          // カメラレンズ
-          _CameraLens(metrics: metrics),
-          SizedBox(width: 10 * metrics.scale),
-          // スピーカーグリル
-          _SpeakerGrille(metrics: metrics),
-          SizedBox(width: 10 * metrics.scale),
-          // サブカメラ（小さな点）
-          Container(
-            width: 4 * metrics.scale,
-            height: 4 * metrics.scale,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF1A0A10),
-              border: Border.all(color: const Color(0xFF3A1828), width: 1),
+        children: List<Widget>.generate(8, (int index) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 1.5 * metrics.scale),
+            child: Container(
+              width: 3 * metrics.scale,
+              height: 3 * metrics.scale,
+              decoration: const BoxDecoration(
+                color: Color(0xFFC07898),
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// カメラレンズ風アイコン。
-class _CameraLens extends StatelessWidget {
-  const _CameraLens({required this.metrics});
-  final _ShellMetrics metrics;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: metrics.cameraLensSize,
-      height: metrics.cameraLensSize,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          colors: <Color>[
-            Color(0xFF2A1520),
-            Color(0xFF1A0A10),
-            Color(0xFF0A0408),
-          ],
-          stops: <double>[0.0, 0.6, 1.0],
-        ),
-        border: Border.all(color: const Color(0xFF5A3545), width: 1.5),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x40FF8FAB), blurRadius: 3, spreadRadius: 0),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: metrics.cameraLensSize * 0.4,
-          height: metrics.cameraLensSize * 0.4,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Color(0xFF1A0814),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// スピーカーグリル。
-class _SpeakerGrille extends StatelessWidget {
-  const _SpeakerGrille({required this.metrics});
-  final _ShellMetrics metrics;
-
-  @override
-  Widget build(BuildContext context) {
-    final int slotCount = 7;
-    final double slotWidth = 3.0 * metrics.scale;
-    final double slotHeight = 1.5 * metrics.scale;
-    final double gap = 2.0 * metrics.scale;
-    final double totalWidth = slotCount * slotWidth + (slotCount - 1) * gap;
-
-    return Container(
-      width: totalWidth + 8 * metrics.scale,
-      height: slotHeight * 3 + gap * 4,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(3 * metrics.scale),
-        color: const Color(0xFF1A0A10),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          for (int row = 0; row < 3; row++) ...<Widget>[
-            if (row > 0) SizedBox(height: gap * 0.5),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                for (int col = 0; col < slotCount; col++) ...<Widget>[
-                  if (col > 0) SizedBox(width: gap),
-                  Container(
-                    width: slotWidth,
-                    height: slotHeight,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(slotHeight * 0.5),
-                      color: const Color(0xFF0A0408),
-                      border: Border.all(
-                        color: const Color(0xFF2A1520),
-                        width: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ],
+          );
+        }),
       ),
     );
   }
@@ -478,32 +322,41 @@ class _StatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final DateTime now = DateTime.now();
+    final String centerText = modeLabel == 'HOME'
+        ? "'${(now.year % 100).toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}"
+        : (photoLoaded ? '$modeLabel  $selectionLabel' : '');
+
     return Container(
       height: metrics.statusBarHeight,
       padding: EdgeInsets.symmetric(horizontal: metrics.statusHorizontalInset),
-      color: const Color(0xFF120610),
+      color: const Color(0xFF111111),
       child: Row(
         children: <Widget>[
-          Text(
-            '✿ ıll',
-            style: TextStyle(
-              fontSize: metrics.statusIconText,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.pinkLight,
-              letterSpacing: 0.25,
-            ),
+          Row(
+            children: <Widget>[
+              Text(
+                'Y!',
+                style: TextStyle(
+                  fontSize: metrics.statusIconText,
+                  color: const Color(0xFFB0B0B0),
+                ),
+              ),
+              SizedBox(width: 3 * metrics.scale),
+              _SignalBars(metrics: metrics),
+            ],
           ),
           SizedBox(width: metrics.statusGap),
           Expanded(
             child: Text(
-              photoLoaded ? '$modeLabel  $selectionLabel' : '',
+              centerText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: metrics.statusMetaText,
-                color: AppTheme.pinkLight,
-                letterSpacing: 0.15,
+                color: const Color(0xFFB0B0B0),
+                letterSpacing: 0.4,
               ),
             ),
           ),
@@ -515,7 +368,33 @@ class _StatusBar extends StatelessWidget {
   }
 }
 
-// バッテリーアイコン。ピンクゲージ。
+class _SignalBars extends StatelessWidget {
+  const _SignalBars({required this.metrics});
+
+  final _ShellMetrics metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 10 * metrics.scale,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          for (int i = 0; i < 4; i++) ...<Widget>[
+            if (i > 0) SizedBox(width: 1 * metrics.scale),
+            Container(
+              width: 2 * metrics.scale,
+              height: (4 + i * 2) * metrics.scale,
+              color: const Color(0xFF90D090),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// バッテリーアイコン。Figmaの薄緑ゲージ。
 class _BatteryIcon extends StatelessWidget {
   const _BatteryIcon({required this.metrics});
   final _ShellMetrics metrics;
@@ -528,21 +407,22 @@ class _BatteryIcon extends StatelessWidget {
           width: metrics.batteryWidth,
           height: metrics.batteryHeight,
           decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.pinkLight, width: 1),
-            color: const Color(0xFF120610),
+            border: Border.all(color: const Color(0xFF90D090), width: 1),
+            borderRadius: BorderRadius.circular(1 * metrics.scale),
+            color: const Color(0xFF111111),
           ),
           alignment: Alignment.centerLeft,
           child: Container(
             width: metrics.batteryWidth * 0.72,
-            height: metrics.batteryHeight - 4,
+            height: metrics.batteryHeight - 3 * metrics.scale,
             margin: const EdgeInsets.only(left: 2),
-            color: AppTheme.pink,
+            color: const Color(0xFF90D090),
           ),
         ),
         Container(
-          width: 2,
+          width: 2 * metrics.scale,
           height: metrics.batteryHeight * 0.54,
-          color: AppTheme.pinkLight,
+          color: const Color(0xFF90D090),
         ),
       ],
     );

@@ -71,7 +71,15 @@ class _StubExportRepository implements ExportRepository {
   }
 
   @override
+  Future<SaveResult> saveVideoFile(String filePath) async {
+    return SaveResult(filePath: filePath, createdAt: DateTime(2026, 2, 22));
+  }
+
+  @override
   Future<void> shareImage(Uint8List bytes, {String? text}) async {}
+
+  @override
+  Future<void> shareVideoFile(String filePath, {String? text}) async {}
 }
 
 void main() {
@@ -124,20 +132,19 @@ void main() {
     expect(find.text('写真を編集する'), findsWidgets);
   });
 
-  testWidgets(
-    'selecting gallery from home transitions to editor in-place',
-    (WidgetTester tester) async {
-      await pumpApp(tester);
-      await tester.pump();
+  testWidgets('selecting gallery from home transitions to editor in-place', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.pump();
 
-      // 「写真を編集する」ボタン（save-share-button）をタップしてギャラリーへ。
-      await tester.tap(find.byKey(const Key('save-share-button')));
-      await tester.pumpAndSettle();
+    // 「写真を編集する」ボタン（save-share-button）をタップしてギャラリーへ。
+    await tester.tap(find.byKey(const Key('save-share-button')));
+    await tester.pumpAndSettle();
 
-      // エディターモードに切り替わり、キャンバスが表示されること。
-      expect(find.byKey(const Key('editor-canvas')), findsOneWidget);
-      // push遷移ではないのでHOMEラベルは消えているはず。
-      expect(find.text('HOME'), findsNothing);
-    },
-  );
+    // エディターモードに切り替わり、キャンバスが表示されること。
+    expect(find.byKey(const Key('editor-canvas')), findsOneWidget);
+    // push遷移ではないのでHOMEラベルは消えているはず。
+    expect(find.text('HOME'), findsNothing);
+  });
 }
