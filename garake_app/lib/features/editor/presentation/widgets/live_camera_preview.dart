@@ -8,6 +8,8 @@ Dependency Memo
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/app_localizations.dart';
+
 class LiveCameraPreview extends StatelessWidget {
   const LiveCameraPreview({
     super.key,
@@ -26,6 +28,7 @@ class LiveCameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     if (errorMessage != null) {
       return ColoredBox(
         color: Colors.black,
@@ -49,12 +52,12 @@ class LiveCameraPreview extends StatelessWidget {
     if (isInitializing ||
         controller == null ||
         !controller!.value.isInitialized) {
-      return const ColoredBox(
+      return ColoredBox(
         color: Colors.black,
         child: Center(
           child: Text(
-            'カメラを起動中...',
-            style: TextStyle(
+            l10n.cameraInitializingLabel,
+            style: const TextStyle(
               color: Color(0xFFD9DFEE),
               fontSize: 11,
               fontWeight: FontWeight.w700,

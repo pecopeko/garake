@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "garasha";
+"NSCameraUsageDescription" = "Take photos for the garasha camera effect.";
+"NSMicrophoneUsageDescription" = "Record audio when shooting videos.";
+"NSPhotoLibraryUsageDescription" = "Choose photos to edit with garasha.";
+"NSPhotoLibraryAddUsageDescription" = "Save edited photos and videos to the Photos app.";

@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import 'launch_phone_display.dart';
 
 class LaunchPhoneIllustration extends StatelessWidget {
@@ -57,7 +58,9 @@ class LaunchPhoneIllustration extends StatelessWidget {
             bottom: 10,
             height: 20,
             child: IgnorePointer(
-              child: showUnderside ? const _CoverHingeShadow() : const SizedBox.shrink(),
+              child: showUnderside
+                  ? const _CoverHingeShadow()
+                  : const SizedBox.shrink(),
             ),
           ),
           Positioned.fill(
@@ -98,6 +101,7 @@ class _PhoneFrontCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     return ClipRRect(
       borderRadius: BorderRadius.circular(38),
       child: DecoratedBox(
@@ -120,11 +124,7 @@ class _PhoneFrontCover extends StatelessWidget {
         child: Stack(
           children: <Widget>[
             // ノイズグレイン（平成のプラスチック質感）
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _CoverGrainPainter(),
-              ),
-            ),
+            Positioned.fill(child: CustomPaint(painter: _CoverGrainPainter())),
             // 控えめのハイライト（マットな質感）
             Positioned(
               left: 18,
@@ -287,19 +287,25 @@ class _PhoneFrontCover extends StatelessWidget {
                 ),
               ),
             ),
-            const Positioned(
+            Positioned(
               left: 0,
               right: 0,
               bottom: 20,
               child: Center(
                 child: Opacity(
                   opacity: 0.42,
-                  child: Text(
-                    'GARAKE',
-                    style: TextStyle(
-                      fontSize: 8,
-                      letterSpacing: 4,
-                      color: Colors.white,
+                  child: SizedBox(
+                    width: 94,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        l10n.brandWordmark,
+                        style: TextStyle(
+                          fontSize: 8,
+                          letterSpacing: l10n.isJapanese ? 4 : 1.2,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -312,20 +318,20 @@ class _PhoneFrontCover extends StatelessWidget {
   }
 }
 
-/// 平成ガラケーのプラスチック質感ノイズ
+/// 平成ガラケーのプラスチック質感（ごく控えめ）
 class _CoverGrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final math.Random rng = math.Random(77);
     final Paint paint = Paint();
-    const double step = 3;
+    const double step = 5;
     for (double y = 0; y < size.height; y += step) {
       for (double x = 0; x < size.width; x += step) {
-        final int alpha = rng.nextInt(22);
-        if (alpha > 8) {
+        final int alpha = rng.nextInt(14);
+        if (alpha > 7) {
           paint.color = rng.nextBool()
               ? Color.fromARGB(alpha, 0, 0, 0)
-              : Color.fromARGB(alpha ~/ 2, 255, 255, 255);
+              : Color.fromARGB(alpha ~/ 3, 255, 255, 255);
           canvas.drawRect(Rect.fromLTWH(x, y, step, step), paint);
         }
       }

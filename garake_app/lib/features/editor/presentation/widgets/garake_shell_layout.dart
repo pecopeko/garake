@@ -10,6 +10,7 @@ class _PhoneBody extends StatelessWidget {
     required this.modeLabel,
     required this.selectionLabel,
     required this.systemMessage,
+    required this.onModeTogglePressed,
     required this.onMenuPressed,
     required this.onStampPressed,
     required this.onSaveSharePressed,
@@ -18,8 +19,10 @@ class _PhoneBody extends StatelessWidget {
     required this.onLeftPressed,
     required this.onRightPressed,
     required this.onOkPressed,
+    required this.modeToggleLabel,
     required this.menuKeyLabel,
     required this.stampKeyLabel,
+    required this.decorateKeyLabel,
     required this.saveShareKeyLabel,
   });
 
@@ -30,6 +33,7 @@ class _PhoneBody extends StatelessWidget {
   final String modeLabel;
   final String selectionLabel;
   final String? systemMessage;
+  final VoidCallback onModeTogglePressed;
   final VoidCallback onMenuPressed;
   final VoidCallback onStampPressed;
   final VoidCallback onSaveSharePressed;
@@ -38,8 +42,10 @@ class _PhoneBody extends StatelessWidget {
   final VoidCallback onLeftPressed;
   final VoidCallback onRightPressed;
   final VoidCallback onOkPressed;
+  final String modeToggleLabel;
   final String menuKeyLabel;
   final String stampKeyLabel;
+  final String decorateKeyLabel;
   final String saveShareKeyLabel;
 
   @override
@@ -70,7 +76,7 @@ class _PhoneBody extends StatelessWidget {
         children: <Widget>[
           // 画面エリアは上部の約2/3を占有する。
           Expanded(
-            flex: 67,
+            flex: 66,
             child: _DisplaySection(
               metrics: metrics,
               preview: preview,
@@ -82,9 +88,10 @@ class _PhoneBody extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 33,
+            flex: 34,
             child: _KeypadSection(
               metrics: metrics,
+              onModeTogglePressed: onModeTogglePressed,
               onMenuPressed: onMenuPressed,
               onStampPressed: onStampPressed,
               onSaveSharePressed: onSaveSharePressed,
@@ -93,8 +100,10 @@ class _PhoneBody extends StatelessWidget {
               onLeftPressed: onLeftPressed,
               onRightPressed: onRightPressed,
               onOkPressed: onOkPressed,
+              modeToggleLabel: modeToggleLabel,
               menuKeyLabel: menuKeyLabel,
               stampKeyLabel: stampKeyLabel,
+              decorateKeyLabel: decorateKeyLabel,
               saveShareKeyLabel: saveShareKeyLabel,
             ),
           ),
@@ -322,10 +331,11 @@ class _StatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final DateTime now = DateTime.now();
-    final String centerText = modeLabel == 'HOME'
-        ? "'${(now.year % 100).toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}"
-        : (photoLoaded ? '$modeLabel  $selectionLabel' : '');
+    final String centerText = photoLoaded
+        ? '$modeLabel  $selectionLabel'
+        : l10n.formatDateStamp(now);
 
     return Container(
       height: metrics.statusBarHeight,
@@ -336,7 +346,7 @@ class _StatusBar extends StatelessWidget {
           Row(
             children: <Widget>[
               Text(
-                'Y!',
+                l10n.statusCarrierMark,
                 style: TextStyle(
                   fontSize: metrics.statusIconText,
                   color: const Color(0xFFB0B0B0),

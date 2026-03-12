@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "garasha";
+"NSCameraUsageDescription" = "用于拍摄照片并应用 garasha 效果。";
+"NSMicrophoneUsageDescription" = "用于在拍摄视频时录制声音。";
+"NSPhotoLibraryUsageDescription" = "用于选择要用 garasha 编辑的照片。";
+"NSPhotoLibraryAddUsageDescription" = "用于将编辑后的照片和视频保存到照片 App。";

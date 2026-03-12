@@ -3,8 +3,9 @@
 Dependency Memo
 - Depends on: editor_controller.dart, editor_state.dart, sticker_item.dart, face_retouch_level.dart, and live_capture_coordinator.dart for view-model inputs.
 - Requires methods: EditorController.availableStickerAssets and LiveCaptureCoordinator selection/shell label getters.
-- Provides methods: editorHomeActions, buildEditorSelectionLabel(), buildEditorModeLabel(), buildSaveShareKeyLabel(), buildStickerPanelItems(), buildFaceRetouchPanelItems(), buildPhotoEditPanelItems().
+- Provides methods: editorHomeActions, buildEditorSelectionLabel(), buildEditorModeLabel(), buildSaveShareKeyLabel(), buildStickerPanelItems(), buildFaceRetouchPanelItems(), buildPhotoEditPanelItems(), buildVideoClipPanelItems().
 */
+import '../../../../app/localization/app_localizations.dart';
 import '../../application/editor_controller.dart';
 import '../../application/editor_state.dart';
 import '../../domain/entities/face_retouch_level.dart';
@@ -25,29 +26,33 @@ class HomeAction {
   final HomeActionKind kind;
 }
 
-const List<HomeAction> editorHomeActions = <HomeAction>[
-  HomeAction(
-    iconGlyph: '📷',
-    label: '写真を撮る',
-    kind: HomeActionKind.photoCapture,
-  ),
-  HomeAction(
-    iconGlyph: '🎥',
-    label: '動画を撮る',
-    kind: HomeActionKind.videoCapture,
-  ),
-  HomeAction(
-    iconGlyph: '🖼',
-    label: '写真を編集する',
-    kind: HomeActionKind.galleryEdit,
-  ),
-];
+List<HomeAction> buildEditorHomeActions() {
+  final AppLocalizations l10n = AppLocalizations.current;
+  return <HomeAction>[
+    HomeAction(
+      iconGlyph: '📷',
+      label: l10n.homeTakePhoto,
+      kind: HomeActionKind.photoCapture,
+    ),
+    HomeAction(
+      iconGlyph: '🎥',
+      label: l10n.homeTakeVideo,
+      kind: HomeActionKind.videoCapture,
+    ),
+    HomeAction(
+      iconGlyph: '🖼',
+      label: l10n.homeEditPhoto,
+      kind: HomeActionKind.galleryEdit,
+    ),
+  ];
+}
 
 String buildEditorSelectionLabel({
   required List<StickerItem> stickers,
   required bool showLiveCapture,
   required LiveCaptureCoordinator liveCapture,
 }) {
+  final AppLocalizations l10n = AppLocalizations.current;
   if (showLiveCapture) {
     return liveCapture.selectionLabel;
   }
@@ -56,12 +61,15 @@ String buildEditorSelectionLabel({
     (StickerItem item) => item.selected,
   );
   if (selectedIndex >= 0) {
-    return 'ST:${selectedIndex + 1}/${stickers.length}';
+    return l10n.stickerSelectionLabel(
+      selectedIndex: selectedIndex + 1,
+      total: stickers.length,
+    );
   }
-  if (stickers.isEmpty) {
-    return 'ST:0/0';
-  }
-  return 'ST:None/${stickers.length}';
+  return l10n.stickerSelectionLabel(
+    selectedIndex: null,
+    total: stickers.length,
+  );
 }
 
 String buildEditorModeLabel({
@@ -72,42 +80,72 @@ String buildEditorModeLabel({
   if (showLiveCapture) {
     return liveCapture.shellModeLabel;
   }
-  return state.keypadMode == KeypadMode.move ? 'MOVE' : 'SCALE';
+  final AppLocalizations l10n = AppLocalizations.current;
+  return state.keypadMode == KeypadMode.move ? l10n.modeMove : l10n.modeScale;
 }
 
 String buildSaveShareKeyLabel({
   required bool showLiveCapture,
   required LiveCaptureCoordinator liveCapture,
 }) {
+  final AppLocalizations l10n = AppLocalizations.current;
   if (!showLiveCapture) {
-    return '保存/シェア';
+    return l10n.keySaveShare;
   }
-  return liveCapture.canOpenSaveSharePanel ? '保存/シェア' : '---';
+  return liveCapture.canOpenSaveSharePanel ? l10n.keyShare : l10n.keyDisabled;
 }
 
 List<String> buildStickerPanelItems() {
   return EditorController.availableStickerAssets
-      .asMap()
-      .entries
-      .map((MapEntry<int, String> entry) => 'スタンプ ${entry.key + 1}')
+      .map(_buildStickerPanelLabel)
       .toList(growable: false);
 }
 
+// asset名を一覧向けの短いラベルへ変換する。
+String _buildStickerPanelLabel(String assetPath) {
+  final AppLocalizations l10n = AppLocalizations.current;
+  final String fileName = assetPath.split('/').last.split('.').first;
+  switch (fileName) {
+    case 'heart_red':
+      return l10n.stickerHeartRed;
+    case 'heart_pink':
+      return l10n.stickerHeartPink;
+    case 'star_yellow':
+      return l10n.stickerStarYellow;
+    case 'star_orange':
+      return l10n.stickerStarOrange;
+    case 'sparkle_gold':
+      return l10n.stickerSparkleGold;
+    case 'sparkle_pink':
+      return l10n.stickerSparklePink;
+  }
+  return fileName.replaceAll('_', ' ');
+}
+
 List<String> buildFaceRetouchPanelItems(FaceRetouchLevel currentLevel) {
+  final AppLocalizations l10n = AppLocalizations.current;
   return FaceRetouchLevel.values
-      .map(
-        (FaceRetouchLevel level) => level == currentLevel
-            ? '● ${level.menuLabel}'
-            : level.menuLabel,
-      )
+      .map((FaceRetouchLevel level) {
+        final String label = l10n.faceRetouchLabel(enabled: level.isEnabled);
+        return level == currentLevel ? '● $label' : label;
+      })
       .toList(growable: false);
 }
 
 List<String> buildPhotoEditPanelItems(FaceRetouchLevel currentLevel) {
+  final AppLocalizations l10n = AppLocalizations.current;
+  final String currentLabel = l10n.faceRetouchLabel(
+    enabled: currentLevel.isEnabled,
+  );
   return <String>[
-    '顔補正 (${currentLevel.menuLabel})',
-    '保存する',
-    'シェアする',
-    '削除',
+    '${l10n.faceRetouchMenuLabel} ($currentLabel)',
+    l10n.menuSave,
+    l10n.menuShare,
+    l10n.menuDelete,
   ];
+}
+
+List<String> buildVideoClipPanelItems() {
+  final AppLocalizations l10n = AppLocalizations.current;
+  return <String>[l10n.menuSave, l10n.menuShare, l10n.menuDelete];
 }

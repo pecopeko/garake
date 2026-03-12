@@ -16,6 +16,7 @@ class EditorState {
     this.status = EditorStatus.idle,
     this.keypadMode = KeypadMode.move,
     this.session,
+    this.busyMessage,
     this.errorMessage,
     this.infoMessage,
   });
@@ -23,6 +24,7 @@ class EditorState {
   final EditorStatus status;
   final KeypadMode keypadMode;
   final EditorSession? session;
+  final String? busyMessage;
   final String? errorMessage;
   final String? infoMessage;
 
@@ -39,15 +41,19 @@ class EditorState {
     EditorStatus? status,
     KeypadMode? keypadMode,
     EditorSession? session,
+    String? busyMessage,
     String? errorMessage,
     String? infoMessage,
+    bool clearSession = false,
+    bool clearBusyMessage = false,
     bool clearErrorMessage = false,
     bool clearInfoMessage = false,
   }) {
     return EditorState(
       status: status ?? this.status,
       keypadMode: keypadMode ?? this.keypadMode,
-      session: session ?? this.session,
+      session: clearSession ? null : (session ?? this.session),
+      busyMessage: clearBusyMessage ? null : (busyMessage ?? this.busyMessage),
       errorMessage: clearErrorMessage
           ? null
           : (errorMessage ?? this.errorMessage),

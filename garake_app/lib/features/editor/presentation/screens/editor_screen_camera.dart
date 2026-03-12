@@ -1,133 +1,251 @@
-// Moves live-camera lifecycle and transient editor messages out of editor_screen.dart so the screen stays within size limits.
+// Moves live capture lifecycle and disposable-camera video finishing messages out of editor_screen.dart so the screen stays compact.
 /*
 Dependency Memo
-- Depends on: editor_screen.dart state fields, camera.dart APIs, and editor controller callbacks.
-- Requires methods: availableCameras(), CameraController.initialize(), CameraController.takePicture(), EditorController.startSessionFromBytes(), State.setState().
-- Provides methods: _enterLiveCameraMode(), _leaveLiveCameraMode(), _captureFromLiveCamera(), _disposeLiveCameraController(), _handleStateMessages(), _showSystemMessage().
+- Depends on: editor_screen.dart state fields, live_capture_coordinator.dart, and editor controller callbacks.
+- Requires methods: LiveCaptureCoordinator.enter(), leave(), toggleLensDirection(), takePhoto(), startVideoRecording(), stopVideoRecording(), saveRecordedVideo(), shareRecordedVideo(), deleteRecordedVideo(), EditorController.startSessionFromBytes(), EditorController.clearMessages(), and State.setState().
+ - Provides methods: _enterLiveCaptureMode(), _toggleLiveCaptureLens(), _leaveLiveCaptureMode(), _handleLiveCapturePrimaryAction(), _runLiveCaptureStop(), _saveRecordedVideo(), _shareRecordedVideo(), _deleteRecordedVideo(), _handleStateMessages(), _showSystemMessage().
 */
 part of 'editor_screen.dart';
 
-Future<void> _enterLiveCameraMode(_EditorScreenState state) async {
-  if (state._isInitializingCamera) {
+Future<void> _enterLiveCaptureMode(
+  _EditorScreenState state,
+  LiveCaptureMode mode,
+) async {
+  if (state._isLiveCaptureActionBusy || state._liveCapture.isInitializing) {
     return;
   }
 
-  await _disposeLiveCameraController(state);
+  state._closePanel();
+  await state._liveCapture.enter(mode);
   if (!state.mounted) {
     return;
   }
 
   state._applyUiUpdate(() {
-    state._isLiveCameraMode = true;
-    state._isInitializingCamera = true;
-    state._isCapturing = false;
-    state._cameraErrorMessage = null;
+    state._liveCaptureBusyLabel = null;
   });
-
-  try {
-    final List<CameraDescription> cameras = await availableCameras();
-    if (cameras.isEmpty) {
-      throw Exception('カメラが見つかりません');
-    }
-
-    final CameraDescription selectedCamera = cameras.firstWhere(
-      (CameraDescription camera) =>
-          camera.lensDirection == CameraLensDirection.back,
-      orElse: () => cameras.first,
-    );
-
-    final CameraController controller = CameraController(
-      selectedCamera,
-      ResolutionPreset.high,
-      enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
-    );
-
-    await controller.initialize();
-
-    if (!state.mounted) {
-      await controller.dispose();
-      return;
-    }
-
-    state._applyUiUpdate(() {
-      state._liveCameraController = controller;
-      state._isInitializingCamera = false;
-    });
-  } catch (_) {
-    if (!state.mounted) {
-      return;
-    }
-    state._applyUiUpdate(() {
-      state._isInitializingCamera = false;
-      state._cameraErrorMessage = 'カメラを起動できませんでした。権限と端末設定を確認してください。';
-    });
-  }
 }
 
-Future<void> _leaveLiveCameraMode(_EditorScreenState state) async {
-  await _disposeLiveCameraController(state);
+Future<void> _leaveLiveCaptureMode(_EditorScreenState state) async {
+  state._closePanel();
+  await state._liveCapture.leave();
   if (!state.mounted) {
     return;
   }
 
   state._applyUiUpdate(() {
-    state._isLiveCameraMode = false;
-    state._isInitializingCamera = false;
-    state._isCapturing = false;
-    state._cameraErrorMessage = null;
+    state._isLiveCaptureActionBusy = false;
+    state._liveCaptureBusyLabel = null;
   });
 }
 
-Future<void> _captureFromLiveCamera(
+Future<bool> _toggleLiveCaptureLens(_EditorScreenState state) async {
+  if (state._isLiveCaptureActionBusy || state._liveCapture.isInitializing) {
+    return false;
+  }
+
+  final bool didToggle = await state._liveCapture.toggleLensDirection();
+  if (!state.mounted) {
+    return false;
+  }
+
+  state._applyUiUpdate(() {});
+  if (!didToggle && state._liveCapture.errorMessage != null) {
+    _showSystemMessage(state, state._liveCapture.errorMessage!);
+  }
+  return didToggle;
+}
+
+Future<void> _handleLiveCapturePrimaryAction(
   _EditorScreenState state,
   EditorController controller,
 ) async {
-  if (!state._isLiveCameraMode ||
-      state._isInitializingCamera ||
-      state._isCapturing) {
+  final AppLocalizations l10n = AppLocalizations.current;
+  if (state._isLiveCaptureActionBusy || state._liveCapture.isInitializing) {
     return;
   }
 
-  final CameraController? cameraController = state._liveCameraController;
-  if (cameraController == null || !cameraController.value.isInitialized) {
-    state._applyUiUpdate(() {
-      state._cameraErrorMessage = 'カメラの準備ができていません。';
-    });
+  if (state._liveCapture.isPhotoMode) {
+    await _capturePhotoFromLivePreview(state, controller);
     return;
   }
-
-  state._applyUiUpdate(() {
-    state._isCapturing = true;
-    state._cameraErrorMessage = null;
-  });
 
   try {
-    final XFile imageFile = await cameraController.takePicture();
-    final bytes = await imageFile.readAsBytes();
-
-    await _leaveLiveCameraMode(state);
-    if (!state.mounted) {
+    if (state._liveCapture.isRecordingVideo) {
+      await _runLiveCaptureStop(state);
       return;
     }
 
-    await controller.startSessionFromBytes(bytes);
+    await state._liveCapture.startVideoRecording();
+    if (!state.mounted) {
+      return;
+    }
+    state._applyUiUpdate(() {});
+    _showSystemMessage(state, l10n.recordingStartedMessage);
+  } on AppException catch (error) {
+    if (!state.mounted) {
+      return;
+    }
+    state._applyUiUpdate(() {});
+    _showSystemMessage(state, error.userMessage);
   } catch (_) {
     if (!state.mounted) {
       return;
     }
-    state._applyUiUpdate(() {
-      state._isCapturing = false;
-      state._cameraErrorMessage = '撮影に失敗しました。もう一度お試しください。';
-    });
+    state._applyUiUpdate(() {});
+    _showSystemMessage(
+      state,
+      state._liveCapture.errorMessage ?? l10n.genericVideoActionFailedMessage,
+    );
   }
 }
 
-Future<void> _disposeLiveCameraController(_EditorScreenState state) async {
-  final CameraController? controller = state._liveCameraController;
-  state._liveCameraController = null;
-  if (controller != null) {
-    await controller.dispose();
+Future<void> _runLiveCaptureStop(_EditorScreenState state) async {
+  final AppLocalizations l10n = AppLocalizations.current;
+  state._applyUiUpdate(() {
+    state._isLiveCaptureActionBusy = true;
+    state._liveCaptureBusyLabel = l10n.busyAutoSavingVideo;
+  });
+
+  try {
+    await state._liveCapture.stopVideoRecording();
+    String? autoSaveFailureMessage;
+    try {
+      await state._liveCapture.saveRecordedVideo();
+    } on AppException catch (error) {
+      autoSaveFailureMessage = l10n.videoAutoSaveRetryMessage(
+        error.userMessage,
+      );
+    } catch (_) {
+      autoSaveFailureMessage = l10n.videoAutoSaveRetryFallbackMessage;
+    }
+    if (!state.mounted) {
+      return;
+    }
+    state._applyUiUpdate(() {});
+    if (autoSaveFailureMessage != null) {
+      _showSystemMessage(state, autoSaveFailureMessage);
+    }
+  } finally {
+    if (state.mounted) {
+      state._applyUiUpdate(() {
+        state._isLiveCaptureActionBusy = false;
+        state._liveCaptureBusyLabel = null;
+      });
+    }
+  }
+}
+
+Future<void> _capturePhotoFromLivePreview(
+  _EditorScreenState state,
+  EditorController controller,
+) async {
+  final AppLocalizations l10n = AppLocalizations.current;
+  try {
+    final bytes = await state._liveCapture.takePhoto();
+    await state._liveCapture.leave();
+    if (!state.mounted) {
+      return;
+    }
+
+    state._applyUiUpdate(() {
+      state._liveCaptureBusyLabel = null;
+    });
+    await controller.startSessionFromBytes(
+      bytes,
+      busyMessage: l10n.busyProcessingPhoto,
+      showLoadedMessage: false,
+    );
+    if (!state.mounted) {
+      return;
+    }
+
+    await controller.saveCurrentImage();
+  } on AppException catch (error) {
+    if (!state.mounted) {
+      return;
+    }
+    state._applyUiUpdate(() {});
+    _showSystemMessage(state, error.userMessage);
+  } catch (_) {
+    if (!state.mounted) {
+      return;
+    }
+    state._applyUiUpdate(() {});
+    _showSystemMessage(
+      state,
+      state._liveCapture.errorMessage ?? l10n.takePhotoFailedMessage,
+    );
+  }
+}
+
+Future<void> _saveRecordedVideo(_EditorScreenState state) {
+  return _runLiveCaptureAction(
+    state,
+    busyLabel: AppLocalizations.current.busySavingVideo,
+    action: () => state._liveCapture.saveRecordedVideo(),
+  );
+}
+
+Future<void> _shareRecordedVideo(_EditorScreenState state) {
+  final AppLocalizations l10n = AppLocalizations.current;
+  return _runLiveCaptureAction(
+    state,
+    busyLabel: l10n.busyOpeningShareSheet,
+    action: () async {
+      await state._liveCapture.shareRecordedVideo();
+      _showSystemMessage(state, l10n.shareSheetOpenedMessage);
+    },
+  );
+}
+
+Future<void> _deleteRecordedVideo(_EditorScreenState state) {
+  final AppLocalizations l10n = AppLocalizations.current;
+  return _runLiveCaptureAction(
+    state,
+    busyLabel: l10n.busyDeletingVideo,
+    action: () async {
+      await state._liveCapture.deleteRecordedVideo();
+      _showSystemMessage(state, l10n.recordedVideoDeletedMessage);
+    },
+  );
+}
+
+Future<void> _runLiveCaptureAction(
+  _EditorScreenState state, {
+  required String busyLabel,
+  required Future<void> Function() action,
+}) async {
+  if (state._isLiveCaptureActionBusy) {
+    return;
+  }
+
+  state._applyUiUpdate(() {
+    state._isLiveCaptureActionBusy = true;
+    state._liveCaptureBusyLabel = busyLabel;
+  });
+
+  try {
+    await action();
+  } on AppException catch (error) {
+    if (state.mounted) {
+      _showSystemMessage(state, error.userMessage);
+    }
+  } catch (_) {
+    if (state.mounted) {
+      _showSystemMessage(
+        state,
+        state._liveCapture.errorMessage ??
+            AppLocalizations.current.genericVideoProcessFailedMessage,
+      );
+    }
+  } finally {
+    if (state.mounted) {
+      state._applyUiUpdate(() {
+        state._isLiveCaptureActionBusy = false;
+        state._liveCaptureBusyLabel = null;
+      });
+    }
   }
 }
 

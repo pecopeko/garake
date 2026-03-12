@@ -7,6 +7,7 @@ Dependency Memo
 */
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 
 /// ガラケーのディスプレイ内に表示されるメニュー選択UI（カワイイ風）。
@@ -30,6 +31,7 @@ class GarakeMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     // カワイイ風液晶メニュー
     return Container(
       color: const Color(0xFF180810),
@@ -64,82 +66,79 @@ class GarakeMenu extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          // メニューアイテムリスト（タップ可能）
+          // メニューアイテムリスト。液晶内タップは止めてキー操作だけに寄せる。
           Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              itemCount: items.length,
-              itemBuilder: (BuildContext context, int index) {
-                final bool isSelected = index == selectedIndex;
-                return GestureDetector(
-                  onTap: () {
-                    // 選択されてないなら移動、選択済みなら決定
-                    if (!isSelected) {
-                      // index方向にカーソルを移動
-                      if (index > selectedIndex) {
-                        for (int i = 0; i < index - selectedIndex; i++) {
-                          onDownPressed();
+            child: IgnorePointer(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: items.length,
+                itemBuilder: (BuildContext context, int index) {
+                  final bool isSelected = index == selectedIndex;
+                  return GestureDetector(
+                    onTap: () {
+                      if (!isSelected) {
+                        if (index > selectedIndex) {
+                          for (int i = 0; i < index - selectedIndex; i++) {
+                            onDownPressed();
+                          }
+                        } else {
+                          for (int i = 0; i < selectedIndex - index; i++) {
+                            onUpPressed();
+                          }
                         }
                       } else {
-                        for (int i = 0; i < selectedIndex - index; i++) {
-                          onUpPressed();
-                        }
+                        onOkPressed();
                       }
-                    } else {
-                      onOkPressed();
-                    }
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 2),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF4A1830)
-                          : Colors.transparent,
-                      border: isSelected
-                          ? Border.all(
-                              color: AppTheme.pink,
-                              width: 1,
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        // 選択カーソル（ハート）
-                        Text(
-                          isSelected ? '♥' : '  ',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isSelected
-                                ? AppTheme.heartRed
-                                : Colors.transparent,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // アイテムラベル
-                        Expanded(
-                          child: Text(
-                            items[index],
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF4A1830)
+                            : Colors.transparent,
+                        border: isSelected
+                            ? Border.all(color: AppTheme.pink, width: 1)
+                            : null,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          // 選択カーソル（ハート）
+                          Text(
+                            isSelected ? '♥' : '  ',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: isSelected
-                                  ? const Color(0xFFFFE4EC)
-                                  : const Color(0xFF8A5070),
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.4,
+                                  ? AppTheme.heartRed
+                                  : Colors.transparent,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          // アイテムラベル
+                          Expanded(
+                            child: Text(
+                              items[index],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isSelected
+                                    ? const Color(0xFFFFE4EC)
+                                    : const Color(0xFF8A5070),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
           // 操作ヒント行
@@ -150,10 +149,10 @@ class GarakeMenu extends StatelessWidget {
                 top: BorderSide(color: Color(0xFF6A3050), width: 1),
               ),
             ),
-            child: const Text(
-              'タップで選択・決定',
+            child: Text(
+              l10n.menuHintTapSelect,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 9,
                 color: Color(0xFF6A4060),
                 letterSpacing: 0.5,

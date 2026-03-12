@@ -277,6 +277,7 @@ class _HomeBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final TextStyle heartStyle = TextStyle(
       color: const Color(0xB3FFFFFF),
       fontSize: _s(10),
@@ -303,13 +304,19 @@ class _HomeBrandMark extends StatelessWidget {
             ),
           ),
           SizedBox(height: _s(9.4)),
-          Text(
-            'GARAKE',
-            style: TextStyle(
-              color: const Color(0x80FFFFFF),
-              fontSize: _s(8),
-              letterSpacing: _s(3),
-              fontWeight: FontWeight.w400,
+          SizedBox(
+            width: _s(94),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                l10n.brandWordmark,
+                style: TextStyle(
+                  color: const Color(0x80FFFFFF),
+                  fontSize: _s(8),
+                  letterSpacing: _s(l10n.isJapanese ? 3 : 1.1),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
             ),
           ),
         ],

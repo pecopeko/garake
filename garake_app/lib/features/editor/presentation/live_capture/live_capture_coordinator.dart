@@ -1,54 +1,32 @@
-// Coordinates in-shell photo capture and video recording without leaking camera details into the screen widget.
+// Coordinates in-shell photo capture and disposable-camera video finishing without leaking camera details into the screen widget.
 /*
 Dependency Memo
-- Depends on: camera.dart for capture hardware access, export_repository.dart for save/share output, and app_exception.dart for user-facing failures.
-- Requires methods: availableCameras(), CameraController.initialize(), prepareForVideoRecording(), takePicture(), startVideoRecording(), stopVideoRecording(), saveVideoFile(), shareVideoFile().
-- Provides methods: enter(), leave(), takePhoto(), startVideoRecording(), stopVideoRecording(), saveRecordedVideo(), shareRecordedVideo(), deleteRecordedVideo().
+- Depends on: camera.dart for capture hardware access, export_repository.dart for save/share output, video_style_renderer.dart for retro finishing, and app_exception.dart for user-facing failures.
+- Requires methods: availableCameras(), CameraController.initialize(), setFlashMode(), prepareForVideoRecording(), takePicture(), startVideoRecording(), stopVideoRecording(), renderDisposableCameraVideo(), saveVideoFile(), shareVideoFile().
+- Provides methods: enter(), leave(), toggleLensDirection(), takePhoto(), startVideoRecording(), stopVideoRecording(), saveRecordedVideo(), shareRecordedVideo(), deleteRecordedVideo().
 */
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../domain/entities/save_result.dart';
 import '../../domain/repositories/export_repository.dart';
+import '../../domain/repositories/video_style_renderer.dart';
 
-enum LiveCaptureMode {
-  photo(
-    shellModeLabel: 'CAM',
-    selectionLabel: 'SHOT',
-    primaryActionLabel: '撮影',
-    overlayStatusLabel: 'PHOTO',
-    overlayHintLabel: 'OKで撮影',
-  ),
-  video(
-    shellModeLabel: 'MOV',
-    selectionLabel: 'STBY',
-    primaryActionLabel: '録画',
-    overlayStatusLabel: 'VIDEO',
-    overlayHintLabel: 'OKで録画',
-  );
-
-  const LiveCaptureMode({
-    required this.shellModeLabel,
-    required this.selectionLabel,
-    required this.primaryActionLabel,
-    required this.overlayStatusLabel,
-    required this.overlayHintLabel,
-  });
-
-  final String shellModeLabel;
-  final String selectionLabel;
-  final String primaryActionLabel;
-  final String overlayStatusLabel;
-  final String overlayHintLabel;
-}
+enum LiveCaptureMode { photo, video }
 
 class LiveCaptureCoordinator {
-  LiveCaptureCoordinator({required ExportRepository exportRepository})
-    : _exportRepository = exportRepository;
+  LiveCaptureCoordinator({
+    required ExportRepository exportRepository,
+    required VideoStyleRenderer videoStyleRenderer,
+  }) : _exportRepository = exportRepository,
+       _videoStyleRenderer = videoStyleRenderer;
 
   final ExportRepository _exportRepository;
+  final VideoStyleRenderer _videoStyleRenderer;
 
   CameraController? _controller;
   LiveCaptureMode? _mode;
@@ -56,6 +34,7 @@ class LiveCaptureCoordinator {
   bool _isCapturingStill = false;
   String? _errorMessage;
   XFile? _recordedVideoFile;
+  CameraLensDirection _lensDirection = CameraLensDirection.back;
 
   CameraController? get controller => _controller;
   LiveCaptureMode? get mode => _mode;
@@ -66,6 +45,12 @@ class LiveCaptureCoordinator {
   bool get isCapturingStill => _isCapturingStill;
   String? get errorMessage => _errorMessage;
   bool get hasRecordedVideo => _recordedVideoFile != null;
+  CameraLensDirection get lensDirection => _lensDirection;
+  bool get isFrontLens => _lensDirection == CameraLensDirection.front;
+  String get lensDirectionLabel =>
+      AppLocalizations.current.lensDirectionLabel(isFront: isFrontLens);
+  String get lensToggleLabel =>
+      AppLocalizations.current.lensToggleLabel(isFront: isFrontLens);
 
   bool get isRecordingVideo {
     final CameraController? cameraController = _controller;
@@ -78,114 +63,128 @@ class LiveCaptureCoordinator {
   bool get canOpenSaveSharePanel =>
       isVideoMode && !isRecordingVideo && hasRecordedVideo;
 
-  String get shellModeLabel => _mode?.shellModeLabel ?? 'CAM';
+  String get shellModeLabel {
+    final AppLocalizations l10n = AppLocalizations.current;
+    if (isVideoMode) {
+      return l10n.liveShellModeVideo;
+    }
+    return l10n.liveShellModeCamera;
+  }
 
   String get selectionLabel {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (_errorMessage != null) {
-      return 'ERR';
+      return l10n.liveSelectionError;
     }
     if (isVideoMode) {
       if (isRecordingVideo) {
-        return 'REC';
+        return l10n.liveSelectionRecording;
       }
       if (hasRecordedVideo) {
-        return 'CLIP';
+        return l10n.liveSelectionClip;
       }
     }
-    return _mode?.selectionLabel ?? 'SHOT';
+    return isVideoMode ? l10n.liveSelectionStandby : l10n.liveSelectionShot;
   }
 
   String get primaryActionLabel {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (isVideoMode) {
       if (isRecordingVideo) {
-        return '停止';
+        return l10n.liveStopAction;
       }
       if (hasRecordedVideo) {
-        return '再録画';
+        return l10n.liveRetryVideoAction;
       }
     }
-    return _mode?.primaryActionLabel ?? '撮影';
+    return isVideoMode ? l10n.liveVideoAction : l10n.livePhotoAction;
   }
 
   String get overlayStatusLabel {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (isVideoMode && isRecordingVideo) {
-      return 'REC';
+      return l10n.liveSelectionRecording;
     }
     if (isVideoMode && hasRecordedVideo) {
-      return 'CLIP READY';
+      return l10n.liveStatusClipReady;
     }
-    return _mode?.overlayStatusLabel ?? 'PHOTO';
+    return isVideoMode ? l10n.liveStatusVideo : l10n.liveStatusPhoto;
   }
 
   String get overlayHintLabel {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (isVideoMode && isRecordingVideo) {
-      return 'OKで停止';
+      return l10n.liveHintStopRecording;
     }
     if (isVideoMode && hasRecordedVideo) {
-      return '保存/シェアできます';
+      return l10n.liveHintSaveOrShare;
     }
-    return _mode?.overlayHintLabel ?? 'OKで撮影';
+    return isVideoMode ? l10n.liveHintRecordVideo : l10n.liveHintTakePhoto;
   }
 
   Future<void> enter(LiveCaptureMode mode) async {
-    if (_isInitializing) {
-      return;
+    await _openCamera(
+      mode: mode,
+      lensDirection: _lensDirection,
+      clearRecordedVideo: true,
+    );
+  }
+
+  Future<bool> toggleLensDirection() async {
+    final AppLocalizations l10n = AppLocalizations.current;
+    final LiveCaptureMode? currentMode = _mode;
+    if (currentMode == null || _isInitializing || _isCapturingStill) {
+      return false;
     }
 
-    await _disposeController();
-
-    _mode = mode;
-    _isInitializing = true;
-    _isCapturingStill = false;
-    _recordedVideoFile = null;
-    _errorMessage = null;
-
-    try {
-      final List<CameraDescription> cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        throw const AppException('カメラが見つかりません。');
-      }
-
-      final CameraDescription selectedCamera = cameras.firstWhere(
-        (CameraDescription camera) =>
-            camera.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
-      );
-
-      final CameraController controller = CameraController(
-        selectedCamera,
-        ResolutionPreset.high,
-        enableAudio: mode == LiveCaptureMode.video,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
-
-      await controller.initialize();
-      if (mode == LiveCaptureMode.video) {
-        await controller.prepareForVideoRecording();
-      }
-
-      _controller = controller;
-    } catch (_) {
-      _errorMessage = mode == LiveCaptureMode.video
-          ? '動画カメラを起動できませんでした。権限と端末設定を確認してください。'
-          : 'カメラを起動できませんでした。権限と端末設定を確認してください。';
-    } finally {
-      _isInitializing = false;
+    if (isRecordingVideo) {
+      _errorMessage = l10n.cannotSwitchWhileRecordingMessage;
+      return false;
     }
+
+    if (hasRecordedVideo) {
+      _errorMessage = l10n.cannotSwitchWithUnsavedClipMessage;
+      return false;
+    }
+
+    final CameraLensDirection nextLensDirection =
+        _lensDirection == CameraLensDirection.front
+        ? CameraLensDirection.back
+        : CameraLensDirection.front;
+
+    final List<CameraDescription> cameras = await availableCameras();
+    final bool hasRequestedLens = cameras.any(
+      (CameraDescription camera) => camera.lensDirection == nextLensDirection,
+    );
+    if (!hasRequestedLens) {
+      _errorMessage = l10n.unavailableCameraMessage(
+        isFront: nextLensDirection == CameraLensDirection.front,
+      );
+      return false;
+    }
+
+    await _openCamera(
+      mode: currentMode,
+      lensDirection: nextLensDirection,
+      clearRecordedVideo: false,
+    );
+    return errorMessage == null;
   }
 
   Future<void> leave() async {
     await _disposeController();
+    await _clearRecordedVideoFile();
     _mode = null;
     _isInitializing = false;
     _isCapturingStill = false;
-    _recordedVideoFile = null;
     _errorMessage = null;
+    _lensDirection = CameraLensDirection.back;
   }
 
   Future<Uint8List> takePhoto() async {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (!isPhotoMode) {
-      throw const AppException('写真モードではありません。');
+      throw AppException(l10n.photoModeOnlyMessage);
     }
 
     final CameraController cameraController = _requireReadyController();
@@ -193,10 +192,11 @@ class LiveCaptureCoordinator {
     _errorMessage = null;
 
     try {
+      await _disableFlash(cameraController);
       final XFile imageFile = await cameraController.takePicture();
       return imageFile.readAsBytes();
     } catch (_) {
-      _errorMessage = '撮影に失敗しました。もう一度お試しください。';
+      _errorMessage = l10n.takePhotoFailedMessage;
       rethrow;
     } finally {
       _isCapturingStill = false;
@@ -204,8 +204,9 @@ class LiveCaptureCoordinator {
   }
 
   Future<void> startVideoRecording() async {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (!isVideoMode) {
-      throw const AppException('動画モードではありません。');
+      throw AppException(l10n.videoModeOnlyMessage);
     }
 
     final CameraController cameraController = _requireReadyController();
@@ -214,34 +215,39 @@ class LiveCaptureCoordinator {
     }
 
     _errorMessage = null;
-    _recordedVideoFile = null;
+    await _clearRecordedVideoFile();
 
     try {
+      await _disableFlash(cameraController);
       await cameraController.startVideoRecording();
     } catch (_) {
-      _errorMessage = '録画を開始できませんでした。';
+      _errorMessage = l10n.startRecordingFailedMessage;
       rethrow;
     }
   }
 
   Future<XFile> stopVideoRecording() async {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (!isVideoMode) {
-      throw const AppException('動画モードではありません。');
+      throw AppException(l10n.videoModeOnlyMessage);
     }
 
     final CameraController cameraController = _requireReadyController();
     if (!cameraController.value.isRecordingVideo) {
-      throw const AppException('録画はまだ始まっていません。');
+      throw AppException(l10n.recordingNotStartedMessage);
     }
 
     _errorMessage = null;
 
+    XFile? rawFile;
     try {
-      final XFile file = await cameraController.stopVideoRecording();
-      _recordedVideoFile = file;
-      return file;
+      rawFile = await cameraController.stopVideoRecording();
+      final XFile finishedFile = await _finishRecordedVideo(rawFile);
+      _recordedVideoFile = finishedFile;
+      return finishedFile;
     } catch (_) {
-      _errorMessage = '録画の停止に失敗しました。';
+      await _deleteCapturedRawFile(rawFile);
+      _errorMessage = l10n.finishVideoStyleFailedMessage;
       rethrow;
     }
   }
@@ -255,12 +261,12 @@ class LiveCaptureCoordinator {
     final XFile file = _requireRecordedVideo();
     return _exportRepository.shareVideoFile(
       file.path,
-      text: 'ガラケーカメラで動画を撮りました',
+      text: AppLocalizations.current.shareVideoText,
     );
   }
 
-  void deleteRecordedVideo() {
-    _recordedVideoFile = null;
+  Future<void> deleteRecordedVideo() async {
+    await _clearRecordedVideoFile();
     _errorMessage = null;
   }
 
@@ -283,10 +289,68 @@ class LiveCaptureCoordinator {
     await controller.dispose();
   }
 
+  Future<void> _openCamera({
+    required LiveCaptureMode mode,
+    required CameraLensDirection lensDirection,
+    required bool clearRecordedVideo,
+  }) async {
+    final AppLocalizations l10n = AppLocalizations.current;
+    if (_isInitializing) {
+      return;
+    }
+
+    await _disposeController();
+    if (clearRecordedVideo) {
+      await _clearRecordedVideoFile();
+    }
+
+    _mode = mode;
+    _isInitializing = true;
+    _isCapturingStill = false;
+    _errorMessage = null;
+    _lensDirection = lensDirection;
+
+    try {
+      final List<CameraDescription> cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        throw AppException(l10n.noCameraFoundMessage);
+      }
+
+      final CameraDescription selectedCamera = cameras.firstWhere(
+        (CameraDescription camera) => camera.lensDirection == lensDirection,
+        orElse: () => cameras.first,
+      );
+
+      final CameraController controller = CameraController(
+        selectedCamera,
+        mode == LiveCaptureMode.video
+            ? ResolutionPreset.medium
+            : ResolutionPreset.high,
+        enableAudio: mode == LiveCaptureMode.video,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+
+      await controller.initialize();
+      await _disableFlash(controller);
+      if (mode == LiveCaptureMode.video) {
+        await controller.prepareForVideoRecording();
+      }
+
+      _controller = controller;
+      _lensDirection = selectedCamera.lensDirection;
+    } catch (_) {
+      _errorMessage = mode == LiveCaptureMode.video
+          ? l10n.openVideoCameraFailedMessage
+          : l10n.openCameraFailedMessage;
+    } finally {
+      _isInitializing = false;
+    }
+  }
+
   CameraController _requireReadyController() {
     final CameraController? cameraController = _controller;
     if (cameraController == null || !cameraController.value.isInitialized) {
-      throw const AppException('カメラの準備ができていません。');
+      throw AppException(AppLocalizations.current.cameraNotReadyMessage);
     }
     return cameraController;
   }
@@ -294,8 +358,47 @@ class LiveCaptureCoordinator {
   XFile _requireRecordedVideo() {
     final XFile? file = _recordedVideoFile;
     if (file == null) {
-      throw const AppException('先に動画を録画してください。');
+      throw AppException(AppLocalizations.current.recordVideoFirstMessage);
     }
     return file;
+  }
+
+  Future<void> _clearRecordedVideoFile() async {
+    final XFile? file = _recordedVideoFile;
+    _recordedVideoFile = null;
+    await _deleteFileAtPath(file?.path);
+  }
+
+  Future<XFile> _finishRecordedVideo(XFile rawFile) async {
+    final String styledPath = await _videoStyleRenderer
+        .renderDisposableCameraVideo(rawFile.path);
+    if (styledPath != rawFile.path) {
+      await _deleteFileAtPath(rawFile.path);
+    }
+    return XFile(styledPath);
+  }
+
+  Future<void> _deleteCapturedRawFile(XFile? rawFile) {
+    return _deleteFileAtPath(rawFile?.path);
+  }
+
+  Future<void> _deleteFileAtPath(String? path) async {
+    if (path == null || path.isEmpty) {
+      return;
+    }
+
+    final File ioFile = File(path);
+    if (await ioFile.exists()) {
+      await ioFile.delete();
+    }
+  }
+
+  Future<void> _disableFlash(CameraController controller) async {
+    // フラッシュ自動発光を防ぐため常にオフを試みる。
+    try {
+      await controller.setFlashMode(FlashMode.off);
+    } catch (_) {
+      // 非対応端末でも撮影自体は継続する。
+    }
   }
 }

@@ -3,13 +3,6 @@
 Dependency Memo
 - Depends on: Dart enum features only.
 - Requires methods: none.
-- Provides methods: ImageInputType.label.
+- Provides methods: ImageInputType.values.
 */
-enum ImageInputType {
-  camera('撮影する'),
-  gallery('アルバムから選ぶ');
-
-  const ImageInputType(this.label);
-
-  final String label;
-}
+enum ImageInputType { camera, gallery }

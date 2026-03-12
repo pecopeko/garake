@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "ガラ写";
+"NSCameraUsageDescription" = "ガラ写の加工用に写真を撮影します。";
+"NSMicrophoneUsageDescription" = "動画撮影時の音声を録音するために利用します。";
+"NSPhotoLibraryUsageDescription" = "ガラ写で加工する写真を選ぶために利用します。";
+"NSPhotoLibraryAddUsageDescription" = "加工した写真や動画を写真アプリへ保存するために利用します。";

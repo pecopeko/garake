@@ -1,9 +1,14 @@
 part of 'garake_shell.dart';
 
 // Figmaノード15:2に寄せたキーパッド。上段切替キー + 中段操作キー + 下段4キー。
+double _keypadUnit(_ShellMetrics metrics, double value) {
+  return value * metrics.scale * metrics.keypadScale;
+}
+
 class _KeypadSection extends StatelessWidget {
   const _KeypadSection({
     required this.metrics,
+    required this.onModeTogglePressed,
     required this.onMenuPressed,
     required this.onStampPressed,
     required this.onSaveSharePressed,
@@ -12,12 +17,15 @@ class _KeypadSection extends StatelessWidget {
     required this.onLeftPressed,
     required this.onRightPressed,
     required this.onOkPressed,
+    required this.modeToggleLabel,
     required this.menuKeyLabel,
     required this.stampKeyLabel,
+    required this.decorateKeyLabel,
     required this.saveShareKeyLabel,
   });
 
   final _ShellMetrics metrics;
+  final VoidCallback onModeTogglePressed;
   final VoidCallback onMenuPressed;
   final VoidCallback onStampPressed;
   final VoidCallback onSaveSharePressed;
@@ -26,17 +34,20 @@ class _KeypadSection extends StatelessWidget {
   final VoidCallback onLeftPressed;
   final VoidCallback onRightPressed;
   final VoidCallback onOkPressed;
+  final String modeToggleLabel;
   final String menuKeyLabel;
   final String stampKeyLabel;
+  final String decorateKeyLabel;
   final String saveShareKeyLabel;
 
   @override
   Widget build(BuildContext context) {
-    final List<String> bottomLabels = _splitSaveShareLabel(
-      menuLabel: menuKeyLabel,
-      stampLabel: stampKeyLabel,
-      saveShareLabel: saveShareKeyLabel,
-    );
+    final List<String> bottomLabels = <String>[
+      menuKeyLabel,
+      stampKeyLabel,
+      decorateKeyLabel,
+      saveShareKeyLabel,
+    ];
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -67,17 +78,12 @@ class _KeypadSection extends StatelessWidget {
           children: <Widget>[
             _ModeToggleKey(
               metrics: metrics,
-              onPressed: () => _triggerKeyPress(onMenuPressed),
+              label: modeToggleLabel,
+              onPressed: () => _triggerKeyPress(onModeTogglePressed),
             ),
-            SizedBox(height: 10 * metrics.scale),
+            SizedBox(height: _keypadUnit(metrics, 9)),
             Row(
               children: <Widget>[
-                _SideActionKey(
-                  metrics: metrics,
-                  iconText: '📞',
-                  onPressed: () => _triggerKeyPress(onMenuPressed),
-                ),
-                SizedBox(width: 8 * metrics.scale),
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -87,14 +93,14 @@ class _KeypadSection extends StatelessWidget {
                         label: '◀',
                         onPressed: () => _triggerKeyPress(onLeftPressed),
                       ),
-                      SizedBox(width: 4 * metrics.scale),
+                      SizedBox(width: _keypadUnit(metrics, 4)),
                       _CenterNavPad(
                         metrics: metrics,
                         onUpPressed: onUpPressed,
                         onDownPressed: onDownPressed,
                         onOkPressed: onOkPressed,
                       ),
-                      SizedBox(width: 4 * metrics.scale),
+                      SizedBox(width: _keypadUnit(metrics, 4)),
                       _SideArrowKey(
                         metrics: metrics,
                         label: '▶',
@@ -103,15 +109,9 @@ class _KeypadSection extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(width: 8 * metrics.scale),
-                _SideActionKey(
-                  metrics: metrics,
-                  iconText: '📕',
-                  onPressed: () => _triggerKeyPress(onSaveSharePressed),
-                ),
               ],
             ),
-            SizedBox(height: 10 * metrics.scale),
+            SizedBox(height: _keypadUnit(metrics, 9)),
             Row(
               children: <Widget>[
                 Expanded(
@@ -122,7 +122,7 @@ class _KeypadSection extends StatelessWidget {
                     onPressed: () => _triggerKeyPress(onMenuPressed),
                   ),
                 ),
-                SizedBox(width: 4 * metrics.scale),
+                SizedBox(width: _keypadUnit(metrics, 4)),
                 Expanded(
                   child: _BottomSoftKey(
                     keyId: const Key('stamp-button'),
@@ -131,7 +131,7 @@ class _KeypadSection extends StatelessWidget {
                     onPressed: () => _triggerKeyPress(onStampPressed),
                   ),
                 ),
-                SizedBox(width: 4 * metrics.scale),
+                SizedBox(width: _keypadUnit(metrics, 4)),
                 Expanded(
                   child: _BottomSoftKey(
                     keyId: const Key('save-share-button'),
@@ -140,7 +140,7 @@ class _KeypadSection extends StatelessWidget {
                     onPressed: () => _triggerKeyPress(onSaveSharePressed),
                   ),
                 ),
-                SizedBox(width: 4 * metrics.scale),
+                SizedBox(width: _keypadUnit(metrics, 4)),
                 Expanded(
                   child: _BottomSoftKey(
                     metrics: metrics,
@@ -158,9 +158,14 @@ class _KeypadSection extends StatelessWidget {
 }
 
 class _ModeToggleKey extends StatelessWidget {
-  const _ModeToggleKey({required this.metrics, required this.onPressed});
+  const _ModeToggleKey({
+    required this.metrics,
+    required this.label,
+    required this.onPressed,
+  });
 
   final _ShellMetrics metrics;
+  final String label;
   final VoidCallback onPressed;
 
   @override
@@ -168,50 +173,24 @@ class _ModeToggleKey extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 62 * metrics.scale,
-        height: 30 * metrics.scale,
+        width: _keypadUnit(metrics, 62),
+        height: _keypadUnit(metrics, 30),
         alignment: Alignment.center,
         decoration: _pinkKeyDecoration(
           metrics,
           borderColor: const Color(0xFFC898B0),
           topColor: const Color(0xFFF0D0E0),
           bottomColor: const Color(0xFFE0B0C8),
-          radius: 3 * metrics.scale,
+          radius: _keypadUnit(metrics, 3),
         ),
         child: Text(
-          '外cam  ⇄',
+          label,
           style: TextStyle(
             color: const Color(0xFF704060),
-            fontSize: 10 * metrics.scale,
+            fontSize: _keypadUnit(metrics, 10),
             fontWeight: FontWeight.w600,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SideActionKey extends StatelessWidget {
-  const _SideActionKey({
-    required this.metrics,
-    required this.iconText,
-    required this.onPressed,
-  });
-
-  final _ShellMetrics metrics;
-  final String iconText;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 48 * metrics.scale,
-        height: 32 * metrics.scale,
-        alignment: Alignment.center,
-        decoration: _silverKeyDecoration(metrics),
-        child: Text(iconText, style: TextStyle(fontSize: 16 * metrics.scale)),
       ),
     );
   }
@@ -233,15 +212,15 @@ class _SideArrowKey extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 26 * metrics.scale,
-        height: 22 * metrics.scale,
+        width: _keypadUnit(metrics, 26),
+        height: _keypadUnit(metrics, 22),
         alignment: Alignment.center,
         decoration: _silverKeyDecoration(metrics),
         child: Text(
           label,
           style: TextStyle(
             color: const Color(0xFF5D91B8),
-            fontSize: 10 * metrics.scale,
+            fontSize: _keypadUnit(metrics, 10),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -265,9 +244,10 @@ class _CenterNavPad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     return SizedBox(
-      width: 44 * metrics.scale,
-      height: 72 * metrics.scale,
+      width: _keypadUnit(metrics, 44),
+      height: _keypadUnit(metrics, 72),
       child: Column(
         children: <Widget>[
           Expanded(
@@ -280,44 +260,44 @@ class _CenterNavPad extends StatelessWidget {
                   borderColor: const Color(0xFFB898A8),
                   topColor: const Color(0xFFF0E0E8),
                   bottomColor: const Color(0xFFD0B0C0),
-                  radius: 3 * metrics.scale,
+                  radius: _keypadUnit(metrics, 3),
                 ),
                 child: Text(
                   '▲',
                   style: TextStyle(
                     color: const Color(0xFF906080),
-                    fontSize: 10 * metrics.scale,
+                    fontSize: _keypadUnit(metrics, 10),
                   ),
                 ),
               ),
             ),
           ),
-          SizedBox(height: 2 * metrics.scale),
+          SizedBox(height: _keypadUnit(metrics, 2)),
           GestureDetector(
             key: const Key('ok-button'),
             onTap: () => _triggerKeyPress(onOkPressed),
             child: Container(
-              width: 44 * metrics.scale,
-              height: 28 * metrics.scale,
+              width: _keypadUnit(metrics, 44),
+              height: _keypadUnit(metrics, 28),
               alignment: Alignment.center,
               decoration: _pinkKeyDecoration(
                 metrics,
                 borderColor: const Color(0xFFA08098),
                 topColor: const Color(0xFFFFFFFF),
                 bottomColor: const Color(0xFFE0C8D5),
-                radius: 3 * metrics.scale,
+                radius: _keypadUnit(metrics, 3),
               ),
               child: Text(
-                'OK',
+                l10n.confirmKeyLabel,
                 style: TextStyle(
                   color: const Color(0xFF503040),
-                  fontSize: 14 * metrics.scale,
+                  fontSize: _keypadUnit(metrics, 14),
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ),
-          SizedBox(height: 2 * metrics.scale),
+          SizedBox(height: _keypadUnit(metrics, 2)),
           Expanded(
             child: GestureDetector(
               onTap: () => _triggerKeyPress(onDownPressed),
@@ -328,13 +308,13 @@ class _CenterNavPad extends StatelessWidget {
                   borderColor: const Color(0xFFB898A8),
                   topColor: const Color(0xFFF0E0E8),
                   bottomColor: const Color(0xFFD0B0C0),
-                  radius: 3 * metrics.scale,
+                  radius: _keypadUnit(metrics, 3),
                 ),
                 child: Text(
                   '▼',
                   style: TextStyle(
                     color: const Color(0xFF906080),
-                    fontSize: 10 * metrics.scale,
+                    fontSize: _keypadUnit(metrics, 10),
                   ),
                 ),
               ),
@@ -365,14 +345,14 @@ class _BottomSoftKey extends StatelessWidget {
       key: keyId,
       onTap: onPressed,
       child: Container(
-        height: 34 * metrics.scale,
+        height: _keypadUnit(metrics, 34),
         alignment: Alignment.center,
         decoration: _pinkKeyDecoration(
           metrics,
           borderColor: const Color(0xFFB098A8),
           topColor: const Color(0xFFF8F0F4),
           bottomColor: const Color(0xFFD8C0D0),
-          radius: 4 * metrics.scale,
+          radius: _keypadUnit(metrics, 4),
         ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
@@ -380,7 +360,7 @@ class _BottomSoftKey extends StatelessWidget {
             label,
             style: TextStyle(
               color: const Color(0xFF503040),
-              fontSize: 12 * metrics.scale,
+              fontSize: _keypadUnit(metrics, 12),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -429,21 +409,6 @@ BoxDecoration _silverKeyDecoration(_ShellMetrics metrics) {
   );
 }
 
-List<String> _splitSaveShareLabel({
-  required String menuLabel,
-  required String stampLabel,
-  required String saveShareLabel,
-}) {
-  final List<String> splitBySlash = saveShareLabel
-      .split(RegExp(r'[/／]'))
-      .map((String value) => value.trim())
-      .where((String value) => value.isNotEmpty)
-      .toList(growable: false);
-  final String saveLabel = splitBySlash.isNotEmpty ? splitBySlash.first : '保存';
-  final String shareLabel = splitBySlash.length > 1 ? splitBySlash[1] : 'シェア';
-  return <String>[menuLabel, stampLabel, saveLabel, shareLabel];
-}
-
 // 画面全体の比率に合わせる寸法定義。
 class _ShellMetrics {
   const _ShellMetrics._({
@@ -463,6 +428,7 @@ class _ShellMetrics {
   final double phoneWidth;
   final double phoneHeight;
   final double scale;
+  double get keypadScale => 1.06;
 
   double get phoneCornerRadius => 16 * scale;
 
@@ -488,6 +454,6 @@ class _ShellMetrics {
 
   double get keypadCurve => 8 * scale;
   double get keypadHorizontalInset => 12 * scale;
-  double get keypadTopInset => 10 * scale;
-  double get keypadBottomInset => 12 * scale;
+  double get keypadTopInset => 8 * scale;
+  double get keypadBottomInset => 10 * scale;
 }

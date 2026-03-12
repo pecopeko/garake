@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/errors/app_exception.dart';
 import '../domain/entities/save_result.dart';
 import '../domain/repositories/export_repository.dart';
@@ -28,22 +29,23 @@ class ExportRepositoryImpl implements ExportRepository {
 
   @override
   Future<SaveResult> saveJpeg(Uint8List bytes) async {
-    final File file = await _writeTempJpeg(bytes, prefix: 'garake_save');
+    final AppLocalizations l10n = AppLocalizations.current;
+    final File file = await _writeTempJpeg(bytes, prefix: 'garasha_save');
     final DateTime created = _now();
 
     final PermissionStatus status = await _photosPermission.request();
     if (!(status.isGranted || status.isLimited || status.isProvisional)) {
-      throw const AppException('写真アプリに保存する権限がありません。設定をご確認ください。');
+      throw AppException(l10n.savePermissionDeniedMessage);
     }
 
     final dynamic result = await ImageGallerySaver.saveImage(
       bytes,
       quality: 100,
-      name: 'garake_${created.millisecondsSinceEpoch}',
+      name: '${l10n.exportFileStem}_${created.millisecondsSinceEpoch}',
       isReturnImagePathOfIOS: true,
     );
     if (!_isSaveSuccess(result)) {
-      throw const AppException('写真アプリへの保存に失敗しました。');
+      throw AppException(l10n.savePhotoFailedMessage);
     }
 
     return SaveResult(
@@ -54,24 +56,25 @@ class ExportRepositoryImpl implements ExportRepository {
 
   @override
   Future<SaveResult> saveVideoFile(String filePath) async {
+    final AppLocalizations l10n = AppLocalizations.current;
     final File sourceFile = File(filePath);
     if (!await sourceFile.exists()) {
-      throw const AppException('保存する動画が見つかりません。');
+      throw AppException(l10n.saveVideoMissingMessage);
     }
 
     final DateTime created = _now();
     final PermissionStatus status = await _photosPermission.request();
     if (!(status.isGranted || status.isLimited || status.isProvisional)) {
-      throw const AppException('写真アプリに保存する権限がありません。設定をご確認ください。');
+      throw AppException(l10n.savePermissionDeniedMessage);
     }
 
     final dynamic result = await ImageGallerySaver.saveFile(
       filePath,
-      name: 'garake_${created.millisecondsSinceEpoch}',
+      name: '${l10n.exportFileStem}_${created.millisecondsSinceEpoch}',
       isReturnPathOfIOS: true,
     );
     if (!_isSaveSuccess(result)) {
-      throw const AppException('動画の保存に失敗しました。');
+      throw AppException(l10n.saveVideoFailedMessage);
     }
 
     return SaveResult(
@@ -82,12 +85,13 @@ class ExportRepositoryImpl implements ExportRepository {
 
   @override
   Future<void> shareImage(Uint8List bytes, {String? text}) async {
-    final File file = await _writeTempJpeg(bytes, prefix: 'garake_share');
+    final AppLocalizations l10n = AppLocalizations.current;
+    final File file = await _writeTempJpeg(bytes, prefix: 'garasha_share');
     await SharePlus.instance.share(
       ShareParams(
         files: <XFile>[XFile(file.path, mimeType: 'image/jpeg')],
         text: text,
-        subject: 'ガラケーカメラ',
+        subject: l10n.shareSubject,
         // iPadでも共有シートを安定表示するための既定アンカー位置。
         sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
       ),
@@ -96,16 +100,17 @@ class ExportRepositoryImpl implements ExportRepository {
 
   @override
   Future<void> shareVideoFile(String filePath, {String? text}) async {
+    final AppLocalizations l10n = AppLocalizations.current;
     final File file = File(filePath);
     if (!await file.exists()) {
-      throw const AppException('共有する動画が見つかりません。');
+      throw AppException(l10n.shareVideoMissingMessage);
     }
 
     await SharePlus.instance.share(
       ShareParams(
         files: <XFile>[XFile(file.path, mimeType: _videoMimeType(file.path))],
         text: text,
-        subject: 'ガラケーカメラ',
+        subject: l10n.shareSubject,
         sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
       ),
     );

@@ -1,462 +1,144 @@
-// Figma参照のネオンホーム画面。時刻表示を残したまま4タイル導線へ置き換える。
+// ホーム待機画面の中身だけを描画し、外側シェルのステータスバーと二重表示しないようにする。
 /*
 Dependency Memo
-- Depends on: Flutter Material animation/widget APIs and app_theme.dart for shared accent colors.
-- Requires methods: onCameraPressed() と onEditPhotoPressed() で既存導線を親へ返す。
+- Depends on: Flutter Material widget APIs and app_theme.dart for shared pink accents.
+- Requires methods: onCameraPressed(), onVideoPressed(), and onEditPhotoPressed() で親が遷移処理を受け取る。
 - Provides methods: GarakeHomeDisplay.build().
 */
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 
-class GarakeHomeDisplay extends StatefulWidget {
+class GarakeHomeDisplay extends StatelessWidget {
   const GarakeHomeDisplay({
     super.key,
     required this.selectedIndex,
     this.onCameraPressed,
+    this.onVideoPressed,
     this.onEditPhotoPressed,
   });
 
   final int selectedIndex;
   final VoidCallback? onCameraPressed;
+  final VoidCallback? onVideoPressed;
   final VoidCallback? onEditPhotoPressed;
 
   @override
-  State<GarakeHomeDisplay> createState() => _GarakeHomeDisplayState();
-}
-
-class _GarakeHomeDisplayState extends State<GarakeHomeDisplay>
-    with SingleTickerProviderStateMixin {
-  static const List<String> _weekdayLabels = <String>[
-    '月',
-    '火',
-    '水',
-    '木',
-    '金',
-    '土',
-    '日',
-  ];
-
-  late final AnimationController _tickerController;
-  Timer? _clockTimer;
-  DateTime _now = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    _tickerController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 8),
-    )..repeat();
-    _clockTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _now = DateTime.now();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _clockTimer?.cancel();
-    _tickerController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final DateTime now = DateTime.now();
     final String mainTime =
-        '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
-    final String detailDate =
-        "'${(_now.year % 100).toString().padLeft(2, '0')}.${_now.month.toString().padLeft(2, '0')}.${_now.day.toString().padLeft(2, '0')} (${_weekdayLabels[_now.weekday - 1]})";
-    final int safeSelectedIndex = widget.selectedIndex < 0
-        ? 0
-        : (widget.selectedIndex > 1 ? 1 : widget.selectedIndex);
-    final List<_HomeShortcutData> shortcuts = <_HomeShortcutData>[
-      _HomeShortcutData(
-        emoji: '📷',
-        label: 'カメラ',
-        description: 'しゃしんをとる',
-        beginColor: const Color(0xFFFF58B7),
-        endColor: const Color(0xFFFF1493),
-        borderColor: const Color(0xFFFF8AD5),
-        glowColor: const Color(0x73FF69B4),
-        isSelected: safeSelectedIndex == 0,
-        onTap: widget.onCameraPressed,
-      ),
-      _HomeShortcutData(
-        emoji: '🖼️',
-        label: 'アルバム',
-        description: 'おもいでをみる',
-        beginColor: const Color(0xFF9B73F2),
-        endColor: const Color(0xFF6A0DAD),
-        borderColor: const Color(0xFFC1A5FF),
-        glowColor: const Color(0x739370DB),
-        isSelected: safeSelectedIndex == 1,
-        onTap: widget.onEditPhotoPressed,
-      ),
-      const _HomeShortcutData(
-        emoji: '✨',
-        label: 'デコる',
-        description: 'かわいくデコ',
-        beginColor: Color(0xFF14D5E3),
-        endColor: Color(0xFF008B8B),
-        borderColor: Color(0xFF68F2FF),
-        glowColor: Color(0x7300CED1),
-      ),
-      const _HomeShortcutData(
-        emoji: '🎀',
-        label: '動画を撮る',
-        description: 'どうがをとる',
-        beginColor: Color(0xFFFFD400),
-        endColor: Color(0xFFFF9800),
-        borderColor: Color(0xFFFFEE6A),
-        glowColor: Color(0x73FFD700),
-      ),
-    ];
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final String detailDate = l10n.formatHomeDate(now);
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Color(0xFF070011),
-            Color(0xFF14002A),
-            Color(0xFF090012),
+            Color(0xFF1A1A1A),
+            Color(0xFF222222),
+            Color(0xFF1A1A1A),
           ],
+          stops: <double>[0.0, 0.5, 1.0],
         ),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x26000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x26FFFFFF),
+            blurRadius: 0,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
       child: Stack(
         children: <Widget>[
-          const Positioned(
-            left: -22,
-            top: 40,
-            child: _BackdropGlow(
-              width: 96,
-              height: 96,
-              colors: <Color>[Color(0x40FF6CC8), Color(0x00000000)],
-            ),
-          ),
-          const Positioned(
-            right: -30,
-            top: 124,
-            child: _BackdropGlow(
-              width: 120,
-              height: 120,
-              colors: <Color>[Color(0x3600E7FF), Color(0x00000000)],
-            ),
-          ),
-          const Positioned(
-            left: 118,
-            bottom: 14,
-            child: _BackdropGlow(
-              width: 132,
-              height: 90,
-              colors: <Color>[Color(0x29FFCC4D), Color(0x00000000)],
-            ),
-          ),
+          const Positioned.fill(child: _HomeScreenGlow()),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _AnimatedTickerBar(
-                  controller: _tickerController,
-                  message: '💖 かわいい写真を撮ろう！ 💖',
-                ),
-                const SizedBox(height: 10),
-                _HomeClockCard(
-                  timeText: mainTime,
-                  dateText: detailDate,
-                  selectedIndex: safeSelectedIndex,
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: shortcuts.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 0.96,
-                        ),
-                    itemBuilder: (BuildContext context, int index) {
-                      return _HomeShortcutTile(data: shortcuts[index]);
-                    },
-                  ),
-                ),
                 const SizedBox(height: 4),
-                Text(
-                  safeSelectedIndex == 0
-                      ? '↑↓でえらぶ / OKでカメラ'
-                      : '↑↓でえらぶ / OKでアルバム',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xB3FBEF8F),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// 背景のネオンにじみを分離して、配色調整をしやすくする。
-class _BackdropGlow extends StatelessWidget {
-  const _BackdropGlow({
-    required this.width,
-    required this.height,
-    required this.colors,
-  });
-
-  final double width;
-  final double height;
-  final List<Color> colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          gradient: RadialGradient(colors: colors, stops: const <double>[0, 1]),
-        ),
-      ),
-    );
-  }
-}
-
-// 上部のテロップを横移動させてガラケー風の遊びを足す。
-class _AnimatedTickerBar extends StatelessWidget {
-  const _AnimatedTickerBar({required this.controller, required this.message});
-
-  final Animation<double> controller;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    const TextStyle style = TextStyle(
-      color: Color(0xFFFFD75D),
-      fontSize: 11,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 0.3,
-      height: 1.15,
-      shadows: <Shadow>[Shadow(color: Color(0x99FF6CB6), blurRadius: 4)],
-    );
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final TextPainter painter = TextPainter(
-          text: TextSpan(text: message, style: style),
-          textDirection: Directionality.of(context),
-          maxLines: 1,
-        )..layout();
-        final double loopWidth = painter.width + 28;
-
-        return Container(
-          height: 18,
-          decoration: BoxDecoration(
-            color: const Color(0xFF22003F),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0x7AFF69B4)),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: Stack(
-              children: <Widget>[
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[Color(0x3DFFFFFF), Color(0x00000000)],
-                      ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    l10n.homeBrandBanner,
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.5,
+                      letterSpacing: l10n.isJapanese ? 3 : 1.1,
+                      color: const Color(0xFFFF80A0),
                     ),
-                  ),
-                ),
-                AnimatedBuilder(
-                  animation: controller,
-                  builder: (BuildContext context, Widget? child) {
-                    final double left = -(controller.value * loopWidth);
-                    return Positioned(
-                      left: left,
-                      top: 1,
-                      child: Row(
-                        children: List<Widget>.generate(3, (int index) {
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: index == 2 ? 0 : 28,
-                            ),
-                            child: Text(message, style: style),
-                          );
-                        }),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// 時刻と現在モードを小さなステータスカードへ集約する。
-class _HomeClockCard extends StatelessWidget {
-  const _HomeClockCard({
-    required this.timeText,
-    required this.dateText,
-    required this.selectedIndex,
-  });
-
-  final String timeText;
-  final String dateText;
-  final int selectedIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final String statusLabel = selectedIndex == 0
-        ? 'CAMERA READY'
-        : 'ALBUM READY';
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x40F8B7FF)),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFF130725), Color(0xFF090313)],
-        ),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x4D000000),
-            blurRadius: 12,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text(
-                  'garake home',
-                  style: TextStyle(
-                    color: Color(0xFFFF94CE),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  timeText,
+                  mainTime,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 52,
                     height: 1,
-                    letterSpacing: 1.2,
+                    letterSpacing: 4,
+                    color: Color(0xFFFFB8D0),
+                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  dateText,
+                  detailDate,
                   style: const TextStyle(
-                    color: Color(0xFFD5C8FF),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.4,
+                    fontSize: 12,
+                    height: 1.5,
+                    color: Color(0xFF908090),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const _HeartDivider(),
+                const SizedBox(height: 16),
+                IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      _HomeActionCard(
+                        emoji: '📷',
+                        label: l10n.homeTakePhoto,
+                        isSelected: selectedIndex == 0,
+                        onPressed: onCameraPressed,
+                      ),
+                      const SizedBox(width: 18),
+                      _HomeActionCard(
+                        emoji: '🎥',
+                        label: l10n.homeTakeVideo,
+                        isSelected: selectedIndex == 1,
+                        onPressed: onVideoPressed,
+                      ),
+                      const SizedBox(width: 18),
+                      _HomeActionCard(
+                        emoji: '🖼',
+                        label: l10n.homeEditPhoto,
+                        isSelected: selectedIndex == 2,
+                        onPressed: onEditPhotoPressed,
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                const Text(
+                  '✧   ♥   ✧',
+                  style: TextStyle(
+                    fontSize: 8,
+                    letterSpacing: 1.6,
+                    color: Color(0xFFFF6090),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  color: const Color(0x33FF62B0),
-                  border: Border.all(color: const Color(0x55FF62B0)),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: const TextStyle(
-                    color: Color(0xFFFEE46B),
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '♥  ✦  ♥',
-                style: TextStyle(
-                  color: Color(0xFFFF90CB),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Container(
-                width: 46,
-                height: 8,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xAAFFF1A0), width: 1),
-                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 26,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xFFFFFFA0), Color(0xFFFFD400)],
-                      ),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(color: Color(0x55FFD400), blurRadius: 6),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -464,141 +146,22 @@ class _HomeClockCard extends StatelessWidget {
   }
 }
 
-// Figmaの4分割ボタンをベースに、既存導線の選択状態だけ追加する。
-class _HomeShortcutTile extends StatelessWidget {
-  const _HomeShortcutTile({required this.data});
-
-  final _HomeShortcutData data;
+// 液晶の中心へうっすらピンク光を重ねてFigmaのにじみを再現する。
+class _HomeScreenGlow extends StatelessWidget {
+  const _HomeScreenGlow();
 
   @override
   Widget build(BuildContext context) {
-    final bool isInteractive = data.onTap != null;
-    final double scale = data.isSelected ? 1.02 : 1.0;
-
-    return AnimatedScale(
-      scale: scale,
-      duration: const Duration(milliseconds: 180),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: data.onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: data.borderColor,
-                width: data.isSelected ? 2.4 : 2,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[data.beginColor, data.endColor],
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: const Color(0x66000000),
-                  blurRadius: data.isSelected ? 14 : 10,
-                  offset: const Offset(0, 5),
-                ),
-                BoxShadow(
-                  color: data.glowColor,
-                  blurRadius: data.isSelected ? 16 : 10,
-                ),
-                if (data.isSelected)
-                  BoxShadow(
-                    color: AppTheme.pink.withValues(alpha: 0.25),
-                    blurRadius: 20,
-                    spreadRadius: 1,
-                  ),
-              ],
-            ),
-            child: Stack(
-              children: <Widget>[
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  top: 4,
-                  child: Container(
-                    height: 24,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[Color(0x47FFFFFF), Color(0x00FFFFFF)],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 14,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Text(
-                          data.emoji,
-                          style: const TextStyle(fontSize: 32, height: 1.1),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          data.label,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          data.description,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withValues(
-                              alpha: isInteractive ? 0.76 : 0.62,
-                            ),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (!isInteractive)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0x29000000),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0x33FFFFFF)),
-                      ),
-                      child: const Text(
-                        'soon',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.7,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.25),
+            radius: 0.95,
+            colors: <Color>[
+              AppTheme.pink.withValues(alpha: 0.05),
+              const Color(0x00000000),
+            ],
           ),
         ),
       ),
@@ -606,27 +169,113 @@ class _HomeShortcutTile extends StatelessWidget {
   }
 }
 
-// タイルの配色と動作を小さなデータへ閉じ込める。
-class _HomeShortcutData {
-  const _HomeShortcutData({
+// 中央ハート付きの水平ライン。ホーム画面の上下余白を締める。
+class _HeartDivider extends StatelessWidget {
+  const _HeartDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const <Widget>[
+        Expanded(
+          child: Divider(height: 1, thickness: 1, color: Color(0xFF302028)),
+        ),
+        SizedBox(width: 4),
+        Text(
+          '♥',
+          style: TextStyle(fontSize: 8, color: Color(0xFFFF6090), height: 1.5),
+        ),
+        SizedBox(width: 4),
+        Expanded(
+          child: Divider(height: 1, thickness: 1, color: Color(0xFF302028)),
+        ),
+      ],
+    );
+  }
+}
+
+// 選択中の入力導線。液晶内タップは無効にしてキー操作だけを受ける。
+class _HomeActionCard extends StatelessWidget {
+  const _HomeActionCard({
     required this.emoji,
     required this.label,
-    required this.description,
-    required this.beginColor,
-    required this.endColor,
-    required this.borderColor,
-    required this.glowColor,
-    this.isSelected = false,
-    this.onTap,
+    required this.isSelected,
+    this.onPressed,
   });
 
   final String emoji;
   final String label;
-  final String description;
-  final Color beginColor;
-  final Color endColor;
-  final Color borderColor;
-  final Color glowColor;
   final bool isSelected;
-  final VoidCallback? onTap;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color borderColor = isSelected
+        ? const Color(0xFF6A2A48)
+        : const Color(0xFF402030);
+    final List<BoxShadow> shadows = <BoxShadow>[
+      BoxShadow(
+        color: const Color(0x26FF508C),
+        blurRadius: isSelected ? 10 : 8,
+      ),
+    ];
+
+    return SizedBox(
+      width: 56,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(8),
+              child: Ink(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[Color(0xFF1A0810), Color(0xFF100008)],
+                  ),
+                  boxShadow: shadows,
+                ),
+                child: Center(
+                  child: Text(
+                    emoji,
+                    style: TextStyle(
+                      fontSize: 26,
+                      color: isSelected
+                          ? const Color(0xFFFFD9E4)
+                          : const Color(0xFF0A0A0A),
+                      shadows: isSelected
+                          ? const <Shadow>[
+                              Shadow(color: Color(0x26FF90B5), blurRadius: 10),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10,
+              height: 1.3,
+              color: isSelected
+                  ? const Color(0xFFFFB8D0)
+                  : const Color(0xFFB098A8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

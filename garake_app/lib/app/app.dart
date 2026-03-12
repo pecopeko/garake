@@ -6,7 +6,9 @@ Dependency Memo
 - Provides methods: GarakeApp.build().
 */
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'localization/app_localizations.dart';
 import 'layout/platform_phone_viewport.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
@@ -17,11 +19,18 @@ class GarakeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ガラケーカメラ',
+      onGenerateTitle: (BuildContext context) => context.l10n.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
       initialRoute: AppRouter.launchRoute,
       routes: AppRouter.routes(),
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       builder: (BuildContext context, Widget? child) {
         // Webではスマホ幅に寄せて、Figmaと同じ見た目で調整しやすくする。
         return PlatformPhoneViewport(child: child ?? const SizedBox.shrink());

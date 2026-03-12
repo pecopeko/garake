@@ -8,7 +8,9 @@ Dependency Memo
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../widgets/launch_phone_illustration.dart';
 
 class LaunchScreen extends StatefulWidget {
@@ -47,6 +49,12 @@ class _LaunchScreenState extends State<LaunchScreen>
     setState(() {
       _isOpening = true;
     });
+    // パカッと開く触覚フィードバック
+    HapticFeedback.mediumImpact();
+    // 蓋がカチッとロックする感覚を少し遅れて再生
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      HapticFeedback.lightImpact();
+    });
     await _openController.forward();
     await Future<void>.delayed(const Duration(milliseconds: 30));
     if (!mounted) {
@@ -69,21 +77,17 @@ class _LaunchScreenState extends State<LaunchScreen>
               builder: (BuildContext context, Widget? child) {
                 final double t = _openController.value;
 
-                // 一つの滑らかなカーブで全体を駆動
-                final double smooth = Curves.easeInOutCubicEmphasized
-                    .transform(t.clamp(0.0, 1.0));
-
                 // カバー開き (0→~0.85 の範囲で完了)
-                final double lidOpen =
-                    Curves.easeOutCubic.transform((t / 0.85).clamp(0.0, 1.0));
+                final double lidOpen = Curves.easeOutCubic.transform(
+                  (t / 0.85).clamp(0.0, 1.0),
+                );
                 // 本体出現 (0.05→0.9, カバーとほぼ同時に動き出す)
-                final double bodyT =
-                    ((t - 0.05) / 0.85).clamp(0.0, 1.0);
-                final double bodyReveal =
-                    Curves.easeOutCubic.transform(bodyT);
+                final double bodyT = ((t - 0.05) / 0.85).clamp(0.0, 1.0);
+                final double bodyReveal = Curves.easeOutCubic.transform(bodyT);
                 // フェードアウト (0.88→1.0)
-                final double fadeOut =
-                    Curves.easeInQuad.transform(((t - 0.88) / 0.12).clamp(0.0, 1.0));
+                final double fadeOut = Curves.easeInQuad.transform(
+                  ((t - 0.88) / 0.12).clamp(0.0, 1.0),
+                );
 
                 // サイズ定義
                 const double phoneW = 200.0;
@@ -99,22 +103,6 @@ class _LaunchScreenState extends State<LaunchScreen>
                   children: <Widget>[
                     // 黒背景
                     const ColoredBox(color: Color(0xFF0A0A0E)),
-                    // スキャンライン
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: CustomPaint(
-                          painter: _ScanLinePainter(),
-                        ),
-                      ),
-                    ),
-                    // ノイズグレイン
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: CustomPaint(
-                          painter: _NoiseGrainPainter(),
-                        ),
-                      ),
-                    ),
                     // 平成キラキラ装飾
                     ..._buildSparkles(viewport, 1.0 - fadeOut),
                     // 本体（画面＋キーパッド）がカバーの下からスムーズに出現
@@ -190,30 +178,29 @@ class _LaunchScreenState extends State<LaunchScreen>
       _SparkleData(0.65, 0.65, '・', 7, 0.35),
     ];
 
-    return sparkles.map((_SparkleData s) {
-      return Positioned(
-        left: viewport.width * s.x,
-        top: viewport.height * s.y,
-        child: IgnorePointer(
-          child: Opacity(
-            opacity: s.opacity * opacity,
-            child: Text(
-              s.glyph,
-              style: TextStyle(
-                fontSize: s.size,
-                color: const Color(0xFFFFD4E8),
-                shadows: const <Shadow>[
-                  Shadow(
-                    color: Color(0x88FFFFFF),
-                    blurRadius: 6,
+    return sparkles
+        .map((_SparkleData s) {
+          return Positioned(
+            left: viewport.width * s.x,
+            top: viewport.height * s.y,
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: s.opacity * opacity,
+                child: Text(
+                  s.glyph,
+                  style: TextStyle(
+                    fontSize: s.size,
+                    color: const Color(0xFFFFD4E8),
+                    shadows: const <Shadow>[
+                      Shadow(color: Color(0x88FFFFFF), blurRadius: 6),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      );
-    }).toList(growable: false);
+          );
+        })
+        .toList(growable: false);
   }
 }
 
@@ -227,43 +214,6 @@ class _SparkleData {
   final double opacity;
 }
 
-/// 平成ガビガビ感のスキャンライン（横縞）— 薄め
-class _ScanLinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = const Color(0x0AFFFFFF)
-      ..strokeWidth = 0.5;
-    for (double y = 0; y < size.height; y += 4) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// ピクセル感のあるノイズグレイン — 控えめ
-class _NoiseGrainPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final math.Random rng = math.Random(42);
-    final Paint paint = Paint();
-    const double step = 5;
-    for (double y = 0; y < size.height; y += step) {
-      for (double x = 0; x < size.width; x += step) {
-        final int alpha = rng.nextInt(12);
-        if (alpha > 5) {
-          paint.color = Color.fromARGB(alpha, 255, 255, 255);
-          canvas.drawRect(Rect.fromLTWH(x, y, step, step), paint);
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 /// 起動演出で開いたガラケーの本体プレビュー。
 /// 上部＝画面エリア（暗いスクリーン＋ステータスバー風）、下部＝キーパッドエリア。
 class _OpenedBodyPreview extends StatelessWidget {
@@ -271,6 +221,7 @@ class _OpenedBodyPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Container(
@@ -326,8 +277,8 @@ class _OpenedBodyPreview extends StatelessWidget {
                           color: const Color(0xFF111111),
                           child: Row(
                             children: <Widget>[
-                              const Text(
-                                'Y!',
+                              Text(
+                                l10n.statusCarrierMark,
                                 style: TextStyle(
                                   fontSize: 9,
                                   color: Color(0xFFB0B0B0),
@@ -380,10 +331,7 @@ class _OpenedBodyPreview extends StatelessWidget {
               ),
             ),
             // 下部：キーパッドエリア
-            Expanded(
-              flex: 35,
-              child: _KeypadArea(),
-            ),
+            Expanded(flex: 35, child: _KeypadArea()),
           ],
         ),
       ),
@@ -396,6 +344,7 @@ class _KeypadArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -417,8 +366,12 @@ class _KeypadArea extends StatelessWidget {
         children: <Widget>[
           // モード切替キー
           Center(
-            child: _pkey(48, 14, const Color(0xFFF0D0E0),
-                border: const Color(0xFFC898B0)),
+            child: _pkey(
+              48,
+              14,
+              const Color(0xFFF0D0E0),
+              border: const Color(0xFFC898B0),
+            ),
           ),
           const SizedBox(height: 6),
           // 中段：D-pad + サイドキー
@@ -452,9 +405,9 @@ class _KeypadArea extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
-                            'OK',
+                            l10n.confirmKeyLabel,
                             style: TextStyle(
                               color: Color(0xFF503040),
                               fontSize: 7,
@@ -477,13 +430,21 @@ class _KeypadArea extends StatelessWidget {
           // 下段：4つのソフトキー
           Row(
             children: <Widget>[
-              Expanded(child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4))),
+              Expanded(
+                child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4)),
+              ),
               const SizedBox(width: 3),
-              Expanded(child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4))),
+              Expanded(
+                child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4)),
+              ),
               const SizedBox(width: 3),
-              Expanded(child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4))),
+              Expanded(
+                child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4)),
+              ),
               const SizedBox(width: 3),
-              Expanded(child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4))),
+              Expanded(
+                child: _pkey(double.infinity, 18, const Color(0xFFF8F0F4)),
+              ),
             ],
           ),
         ],
@@ -498,10 +459,7 @@ class _KeypadArea extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(3),
         color: color,
-        border: Border.all(
-          color: border ?? const Color(0xFFB098A8),
-          width: 1,
-        ),
+        border: Border.all(color: border ?? const Color(0xFFB098A8), width: 1),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x14000000),
@@ -513,5 +471,3 @@ class _KeypadArea extends StatelessWidget {
     );
   }
 }
-
-

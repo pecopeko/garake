@@ -9,6 +9,7 @@ import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/errors/app_exception.dart';
 import '../domain/repositories/image_source_repository.dart';
 
@@ -34,7 +35,7 @@ class ImageSourceRepositoryImpl implements ImageSourceRepository {
       imageQuality: 100,
     );
     if (file == null) {
-      throw const AppException('画像の選択をキャンセルしました。');
+      throw AppException(AppLocalizations.current.imagePickCanceledMessage);
     }
     return file.readAsBytes();
   }

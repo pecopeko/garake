@@ -1,7 +1,7 @@
-// Registers Riverpod providers for editor dependencies, face detection, and state controller.
+// Registers Riverpod providers for editor dependencies, face detection, state controller, and video styling.
 /*
 Dependency Memo
-- Depends on: data implementations, core processors, and editor_image_pipeline.dart.
+- Depends on: data implementations, core processors, editor_image_pipeline.dart, and video style renderer abstractions.
 - Requires methods: concrete repository constructors.
 - Provides methods: editorControllerProvider and dependency providers.
 */
@@ -12,12 +12,14 @@ import '../../../core/image_processing/sticker_composer_impl.dart';
 import '../data/mlkit_face_feature_detector_impl.dart';
 import '../data/export_repository_impl.dart';
 import '../data/image_source_repository_impl.dart';
+import '../data/platform_video_style_renderer_impl.dart';
 import '../domain/entities/filter_config.dart';
 import '../domain/repositories/export_repository.dart';
 import '../domain/repositories/face_feature_detector.dart';
 import '../domain/repositories/filter_engine.dart';
 import '../domain/repositories/image_source_repository.dart';
 import '../domain/repositories/sticker_composer.dart';
+import '../domain/repositories/video_style_renderer.dart';
 import 'editor_controller.dart';
 import 'editor_image_pipeline.dart';
 import 'editor_state.dart';
@@ -54,6 +56,10 @@ final stickerComposerProvider = Provider<StickerComposer>(
 
 final exportRepositoryProvider = Provider<ExportRepository>(
   (_) => ExportRepositoryImpl(),
+);
+
+final videoStyleRendererProvider = Provider<VideoStyleRenderer>(
+  (_) => PlatformVideoStyleRendererImpl(),
 );
 
 final editorControllerProvider =

@@ -3,7 +3,7 @@
 Dependency Memo
 - Depends on: domain entities/repositories, editor_image_pipeline.dart, and app_exception.dart for flow control.
 - Requires methods: pickFromCamera(), pickFromGallery(), loadSessionData(), renderFilteredPreview(), compose(), saveJpeg(), shareImage().
-- Provides methods: startSession(), startSessionFromBytes(), updateFaceRetouchLevel(), addSticker(), deleteSelectedSticker(), onArrowUp(), onArrowDown(), onArrowLeft(), onArrowRight(), onOkPressed(), updateCanvasTransform(), saveCurrentImage(), shareCurrentImage().
+- Provides methods: startSession(), startSessionFromBytes(), returnToHome(), updateFaceRetouchLevel(), addSticker(), deleteSelectedSticker(), onArrowUp(), onArrowDown(), onArrowLeft(), onArrowRight(), onOkPressed(), updateCanvasTransform(), saveCurrentImage(), shareCurrentImage().
 */
 import 'dart:math';
 import 'dart:typed_data';
@@ -11,6 +11,7 @@ import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/errors/app_exception.dart';
 import '../domain/entities/canvas_transform.dart';
 import '../domain/entities/editor_session.dart';
@@ -47,6 +48,7 @@ class EditorController extends StateNotifier<EditorState> {
   final FilterConfig _filterConfig;
   final DateTime Function() _now;
   int _stickerCounter = 0;
+  int _operationVersion = 0;
 
   static const List<String> availableStickerAssets = <String>[
     'assets/stickers/heart_red.png',
@@ -58,12 +60,16 @@ class EditorController extends StateNotifier<EditorState> {
   ];
 
   Future<void> startSession(ImageInputType source) async {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (state.isBusy) {
       return;
     }
-
+    final int operationVersion = _beginOperation();
     state = state.copyWith(
       status: EditorStatus.picking,
+      busyMessage: source == ImageInputType.gallery
+          ? l10n.busyOpeningAlbum
+          : l10n.busyOpeningCamera,
       clearErrorMessage: true,
       clearInfoMessage: true,
     );
@@ -74,48 +80,76 @@ class EditorController extends StateNotifier<EditorState> {
         ImageInputType.gallery =>
           await _imageSourceRepository.pickFromGallery(),
       };
-      await _startSessionFromInputBytes(inputBytes, pickedFromSource: true);
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
+      await _startSessionFromInputBytes(
+        inputBytes,
+        pickedFromSource: true,
+        operationVersion: operationVersion,
+      );
     } catch (error) {
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       if (error is AppException) {
         state = state.copyWith(
           status: state.hasSession ? EditorStatus.ready : EditorStatus.idle,
+          clearBusyMessage: true,
           errorMessage: error.userMessage,
           clearInfoMessage: true,
         );
       } else {
         state = state.copyWith(
           status: state.hasSession ? EditorStatus.ready : EditorStatus.error,
-          errorMessage: '画像の読み込みに失敗しました。',
+          clearBusyMessage: true,
+          errorMessage: l10n.imageLoadFailedMessage,
           clearInfoMessage: true,
         );
       }
     }
   }
 
-  Future<void> startSessionFromBytes(Uint8List inputBytes) async {
+  Future<void> startSessionFromBytes(
+    Uint8List inputBytes, {
+    String? busyMessage,
+    bool showLoadedMessage = true,
+  }) async {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (state.isBusy) {
       return;
     }
-
+    final int operationVersion = _beginOperation();
     state = state.copyWith(
       status: EditorStatus.processing,
+      busyMessage: busyMessage ?? l10n.busyProcessingPhoto,
       clearErrorMessage: true,
       clearInfoMessage: true,
     );
 
     try {
-      await _startSessionFromInputBytes(inputBytes, pickedFromSource: false);
+      await _startSessionFromInputBytes(
+        inputBytes,
+        pickedFromSource: false,
+        operationVersion: operationVersion,
+        showLoadedMessage: showLoadedMessage,
+      );
     } catch (error) {
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       if (error is AppException) {
         state = state.copyWith(
           status: state.hasSession ? EditorStatus.ready : EditorStatus.idle,
+          clearBusyMessage: true,
           errorMessage: error.userMessage,
           clearInfoMessage: true,
         );
       } else {
         state = state.copyWith(
           status: state.hasSession ? EditorStatus.ready : EditorStatus.error,
-          errorMessage: '画像の読み込みに失敗しました。',
+          clearBusyMessage: true,
+          errorMessage: l10n.imageLoadFailedMessage,
           clearInfoMessage: true,
         );
       }
@@ -125,14 +159,26 @@ class EditorController extends StateNotifier<EditorState> {
   Future<void> _startSessionFromInputBytes(
     Uint8List inputBytes, {
     required bool pickedFromSource,
+    required int operationVersion,
+    bool showLoadedMessage = true,
   }) async {
+    final AppLocalizations l10n = AppLocalizations.current;
     if (pickedFromSource) {
-      state = state.copyWith(status: EditorStatus.processing);
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
+      state = state.copyWith(
+        status: EditorStatus.processing,
+        busyMessage: l10n.busyProcessingAlbumPhoto,
+      );
     }
 
     final DateTime stampDate = _now();
     final EditorImageLoadResult loadResult = await _imagePipeline
         .loadSessionData(inputBytes, stampDate);
+    if (!_isOperationActive(operationVersion)) {
+      return;
+    }
 
     state = state.copyWith(
       status: EditorStatus.ready,
@@ -148,15 +194,25 @@ class EditorController extends StateNotifier<EditorState> {
         filterConfig: _filterConfig,
         canvasTransform: CanvasTransform.identity,
       ),
-      infoMessage: '画像を読み込みました。',
+      clearBusyMessage: true,
+      infoMessage: showLoadedMessage ? l10n.imageLoadedMessage : null,
       clearErrorMessage: true,
+      clearInfoMessage: !showLoadedMessage,
     );
   }
 
+  void returnToHome() {
+    // ホーム復帰時は進行中の非同期完了を無視してホーム表示を維持する。
+    _invalidatePendingOperations();
+    _stickerCounter = 0;
+    state = const EditorState();
+  }
+
   void addSticker(String assetPath) {
+    final AppLocalizations l10n = AppLocalizations.current;
     final EditorSession? session = state.session;
     if (session == null) {
-      state = state.copyWith(errorMessage: '先に写真を選択してください。');
+      state = state.copyWith(errorMessage: l10n.selectPhotoFirstMessage);
       return;
     }
 
@@ -183,19 +239,20 @@ class EditorController extends StateNotifier<EditorState> {
     state = state.copyWith(
       keypadMode: KeypadMode.move,
       session: session.copyWith(stickers: next),
-      infoMessage: 'スタンプを追加しました。',
+      infoMessage: l10n.stickerAddedMessage,
       clearErrorMessage: true,
     );
   }
 
   void deleteSelectedSticker() {
+    final AppLocalizations l10n = AppLocalizations.current;
     final EditorSession? session = state.session;
     if (session == null) {
       return;
     }
     final StickerItem? selected = session.selectedSticker;
     if (selected == null) {
-      state = state.copyWith(errorMessage: '削除するスタンプを選択してください。');
+      state = state.copyWith(errorMessage: l10n.selectStickerToDeleteMessage);
       return;
     }
 
@@ -204,7 +261,7 @@ class EditorController extends StateNotifier<EditorState> {
         .toList(growable: false);
     state = state.copyWith(
       session: session.copyWith(stickers: next),
-      infoMessage: 'スタンプを削除しました。',
+      infoMessage: l10n.stickerDeletedMessage,
       clearErrorMessage: true,
     );
   }
@@ -226,20 +283,21 @@ class EditorController extends StateNotifier<EditorState> {
   }
 
   void onOkPressed() {
+    final AppLocalizations l10n = AppLocalizations.current;
     final EditorSession? session = state.session;
     if (session == null) {
       return;
     }
 
     if (session.stickers.isEmpty) {
-      state = state.copyWith(errorMessage: '先にスタンプを追加してください。');
+      state = state.copyWith(errorMessage: l10n.addStickerFirstMessage);
       return;
     }
 
     final StickerItem? selected = session.selectedSticker;
     if (selected == null) {
       _selectStickerByOffset(0);
-      state = state.copyWith(infoMessage: 'スタンプを選択しました。');
+      state = state.copyWith(infoMessage: l10n.stickerSelectedMessage);
       return;
     }
 
@@ -248,7 +306,9 @@ class EditorController extends StateNotifier<EditorState> {
         : KeypadMode.move;
     state = state.copyWith(
       keypadMode: nextMode,
-      infoMessage: nextMode == KeypadMode.move ? '移動モード' : '拡大縮小モード',
+      infoMessage: nextMode == KeypadMode.move
+          ? l10n.moveModeMessage
+          : l10n.scaleModeMessage,
     );
   }
 
@@ -266,22 +326,31 @@ class EditorController extends StateNotifier<EditorState> {
     );
   }
 
-  Future<void> updateFaceRetouchLevel(FaceRetouchLevel level) async {
+  Future<void> updateFaceRetouchLevel(
+    FaceRetouchLevel level, {
+    bool announce = true,
+  }) async {
+    final AppLocalizations l10n = AppLocalizations.current;
     final EditorSession? session = state.session;
     if (session == null || state.isBusy) {
       return;
     }
+    final String levelLabel = l10n.faceRetouchLabel(enabled: level.isEnabled);
     if (session.faceRetouchLevel == level) {
-      state = state.copyWith(infoMessage: '顔補正は ${level.menuLabel} のままです。');
+      state = state.copyWith(
+        infoMessage: l10n.faceRetouchUnchangedMessage(levelLabel),
+      );
       return;
     }
     if (level.isEnabled && !session.canRetouchFace) {
-      state = state.copyWith(errorMessage: '顔が見つからなかったため盛れ加工できません。');
+      state = state.copyWith(errorMessage: l10n.faceRetouchNoFaceMessage);
       return;
     }
+    final int operationVersion = _beginOperation();
 
     state = state.copyWith(
       status: EditorStatus.processing,
+      busyMessage: l10n.busyPreparingFaceRetouch,
       clearErrorMessage: true,
       clearInfoMessage: true,
     );
@@ -294,86 +363,127 @@ class EditorController extends StateNotifier<EditorState> {
             detectedFaces: session.detectedFaces,
             faceRetouchLevel: level,
           );
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       state = state.copyWith(
         status: EditorStatus.ready,
         session: session.copyWith(
           filteredBytes: filteredBytes,
           faceRetouchLevel: level,
         ),
-        infoMessage: '顔補正を ${level.menuLabel} にしました。',
+        clearBusyMessage: true,
+        infoMessage: announce
+            ? l10n.faceRetouchUpdatedMessage(levelLabel)
+            : null,
+        clearInfoMessage: !announce,
       );
     } catch (_) {
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       state = state.copyWith(
         status: EditorStatus.ready,
-        errorMessage: '顔補正の更新に失敗しました。',
+        clearBusyMessage: true,
+        errorMessage: l10n.faceRetouchFailedMessage,
       );
     }
   }
 
   Future<void> saveCurrentImage() async {
+    final AppLocalizations l10n = AppLocalizations.current;
     final EditorSession? session = state.session;
     if (session == null || state.isBusy) {
       return;
     }
+    final int operationVersion = _beginOperation();
 
     state = state.copyWith(
       status: EditorStatus.saving,
+      busyMessage: l10n.busyPreparingSaveImage,
       clearErrorMessage: true,
       clearInfoMessage: true,
     );
 
     try {
       final Uint8List output = await _buildOutputBytes(session);
-      final result = await _exportRepository.saveJpeg(output);
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
+      await _exportRepository.saveJpeg(output);
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       state = state.copyWith(
         status: EditorStatus.ready,
-        infoMessage: '保存しました: ${result.filePath}',
+        clearBusyMessage: true,
+        clearInfoMessage: true,
       );
     } catch (error) {
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       if (error is AppException) {
         state = state.copyWith(
           status: EditorStatus.ready,
+          clearBusyMessage: true,
           errorMessage: error.userMessage,
         );
         return;
       }
       state = state.copyWith(
         status: EditorStatus.ready,
-        errorMessage: '保存に失敗しました。',
+        clearBusyMessage: true,
+        errorMessage: l10n.saveFailedMessage,
       );
     }
   }
 
   Future<void> shareCurrentImage() async {
+    final AppLocalizations l10n = AppLocalizations.current;
     final EditorSession? session = state.session;
     if (session == null || state.isBusy) {
       return;
     }
+    final int operationVersion = _beginOperation();
 
     state = state.copyWith(
       status: EditorStatus.sharing,
+      busyMessage: l10n.busyPreparingShareImage,
       clearErrorMessage: true,
       clearInfoMessage: true,
     );
 
     try {
       final Uint8List output = await _buildOutputBytes(session);
-      await _exportRepository.shareImage(output, text: 'ガラケーカメラで加工しました');
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
+      await _exportRepository.shareImage(output, text: l10n.sharePhotoText);
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       state = state.copyWith(
         status: EditorStatus.ready,
-        infoMessage: '共有シートを開きました。',
+        clearBusyMessage: true,
+        infoMessage: l10n.shareSheetOpenedMessage,
       );
     } catch (error) {
+      if (!_isOperationActive(operationVersion)) {
+        return;
+      }
       if (error is AppException) {
         state = state.copyWith(
           status: EditorStatus.ready,
+          clearBusyMessage: true,
           errorMessage: error.userMessage,
         );
         return;
       }
       state = state.copyWith(
         status: EditorStatus.ready,
-        errorMessage: '共有に失敗しました。',
+        clearBusyMessage: true,
+        errorMessage: l10n.shareFailedMessage,
       );
     }
   }
@@ -471,5 +581,18 @@ class EditorController extends StateNotifier<EditorState> {
       session.stickers,
       session.stampDate,
     );
+  }
+
+  int _beginOperation() {
+    _operationVersion += 1;
+    return _operationVersion;
+  }
+
+  bool _isOperationActive(int version) {
+    return version == _operationVersion;
+  }
+
+  void _invalidatePendingOperations() {
+    _operationVersion += 1;
   }
 }

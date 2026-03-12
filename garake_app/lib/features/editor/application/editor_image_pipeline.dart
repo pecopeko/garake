@@ -2,7 +2,7 @@
 /*
 Dependency Memo
 - Depends on: app_exception.dart, detected_face.dart, face_retouch_level.dart, filter_config.dart, filter_engine.dart, and face_feature_detector.dart.
-- Requires methods: detectFaces(), applyGarakeFilter(), image.decodeImage().
+- Requires methods: detectFaces(), applyGarakeFilter(), image.decodeImage(), image.bakeOrientation().
 - Provides methods: loadSessionData(), renderFilteredPreview().
 */
 import 'dart:typed_data';
@@ -10,6 +10,7 @@ import 'dart:ui';
 
 import 'package:image/image.dart' as img;
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/errors/app_exception.dart';
 import '../domain/entities/detected_face.dart';
 import '../domain/entities/face_retouch_level.dart';
@@ -36,8 +37,11 @@ class EditorImagePipeline {
   ) async {
     final img.Image? decoded = img.decodeImage(inputBytes);
     if (decoded == null) {
-      throw const AppException('読み込めない画像形式です。');
+      throw AppException(
+        AppLocalizations.current.unsupportedImageFormatMessage,
+      );
     }
+    final img.Image normalized = img.bakeOrientation(decoded);
 
     final Future<List<DetectedFace>> detectedFacesFuture = _faceFeatureDetector
         .detectFaces(inputBytes)
@@ -57,8 +61,8 @@ class EditorImagePipeline {
     return EditorImageLoadResult(
       filteredBytes: filteredBytes,
       originalImageSize: Size(
-        decoded.width.toDouble(),
-        decoded.height.toDouble(),
+        normalized.width.toDouble(),
+        normalized.height.toDouble(),
       ),
       detectedFaces: detectedFaces,
     );

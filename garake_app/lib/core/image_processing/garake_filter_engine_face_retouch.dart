@@ -17,6 +17,7 @@ void _applyFaceRetouch(
   }
 
   final _FaceRetouchProfile profile = _FaceRetouchProfile.fromLevel(level);
+  _applyFaceShapeTuning(image, detectedFaces, profile);
   final img.Image source = img.Image.from(image);
   final img.Image blurred = img.Image.from(image);
   img.gaussianBlur(blurred, radius: profile.blurRadius);
@@ -29,6 +30,76 @@ void _applyFaceRetouch(
     }
     _retouchFace(image, source, blurred, face, bounds, imageSize, profile);
   }
+}
+
+void _applyFaceShapeTuning(
+  img.Image image,
+  List<DetectedFace> detectedFaces,
+  _FaceRetouchProfile profile,
+) {
+  final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
+  for (final DetectedFace face in detectedFaces) {
+    final Rect bounds = face.resolveBounds(imageSize);
+    if (bounds.width < 24 || bounds.height < 24) {
+      continue;
+    }
+
+    final Offset leftCheek =
+        face.resolvePoint(face.leftCheek, imageSize) ??
+        Offset(
+          bounds.left + bounds.width * 0.22,
+          bounds.top + bounds.height * 0.58,
+        );
+    final Offset rightCheek =
+        face.resolvePoint(face.rightCheek, imageSize) ??
+        Offset(
+          bounds.right - bounds.width * 0.22,
+          bounds.top + bounds.height * 0.58,
+        );
+    final Offset chinCenter = Offset(
+      bounds.center.dx,
+      bounds.bottom - bounds.height * 0.10,
+    );
+
+    _applyLocalBulge(
+      image,
+      center: leftCheek,
+      radius: max(bounds.width * 0.18, 18),
+      strength: -profile.cheekPinch,
+    );
+    _applyLocalBulge(
+      image,
+      center: rightCheek,
+      radius: max(bounds.width * 0.18, 18),
+      strength: -profile.cheekPinch,
+    );
+    _applyLocalBulge(
+      image,
+      center: chinCenter,
+      radius: max(bounds.width * 0.22, 20),
+      strength: -profile.chinPinch,
+    );
+  }
+}
+
+void _applyLocalBulge(
+  img.Image image, {
+  required Offset? center,
+  required double radius,
+  required double strength,
+}) {
+  if (center == null || radius <= 1 || strength.abs() < 0.001) {
+    return;
+  }
+
+  img.bulgeDistortion(
+    image,
+    centerX: center.dx.round(),
+    centerY: center.dy.round(),
+    radius: radius,
+    scale: strength,
+    interpolation: img.Interpolation.linear,
+  );
 }
 
 void _retouchFace(
@@ -126,10 +197,6 @@ void _retouchFace(
           _smoothStep(0.32, 0.92, dx.abs()) *
           (1.0 - (dy - 0.1).abs().clamp(0.0, 1.0)) *
           faceMask;
-      final double eyeLift = max(
-        _featureMask(x, y, leftEye, bounds.width * 0.10, bounds.height * 0.06),
-        _featureMask(x, y, rightEye, bounds.width * 0.10, bounds.height * 0.06),
-      );
       final double lipTint = _featureMask(
         x,
         y,
@@ -155,22 +222,25 @@ void _retouchFace(
       );
 
       final double lift =
-          (profile.faceLift * faceMask) +
-          (profile.centerGlow * centerGlow) +
-          (profile.eyeLift * eyeLift);
+          (profile.faceLift * faceMask) + (profile.centerGlow * centerGlow);
       final double contour = profile.edgeShade * edgeShade;
+      final double skinBrighten = profile.skinBrighten * skinMask;
 
       r = (r + 255 * lift) * (1.0 - contour * 0.08);
       g = (g + 255 * lift * 0.92) * (1.0 - contour * 0.05);
       b = (b + 255 * lift * 0.88) * (1.0 - contour * 0.03);
 
-      r += 255 * blush * profile.cheekTint * 0.07;
-      g += 255 * blush * profile.cheekTint * 0.02;
-      b += 255 * blush * profile.cheekTint * 0.05;
+      r += 255 * skinBrighten * 0.018;
+      g += 255 * skinBrighten * 0.014;
+      b += 255 * skinBrighten * 0.012;
 
-      r += 255 * lipTint * profile.lipTint * 0.05;
-      g -= 255 * lipTint * profile.lipTint * 0.01;
-      b += 255 * lipTint * profile.lipTint * 0.02;
+      r += 255 * blush * profile.cheekTint * 0.10;
+      g += 255 * blush * profile.cheekTint * 0.04;
+      b += 255 * blush * profile.cheekTint * 0.06;
+
+      r += 255 * lipTint * profile.lipTint * 0.08;
+      g -= 255 * lipTint * profile.lipTint * 0.012;
+      b += 255 * lipTint * profile.lipTint * 0.03;
 
       image.setPixelRgba(x, y, _clamp8(r), _clamp8(g), _clamp8(b), original.a);
     }
@@ -208,7 +278,9 @@ class _FaceRetouchProfile {
     required this.faceLift,
     required this.centerGlow,
     required this.edgeShade,
-    required this.eyeLift,
+    required this.skinBrighten,
+    required this.cheekPinch,
+    required this.chinPinch,
     required this.cheekTint,
     required this.lipTint,
   });
@@ -218,7 +290,9 @@ class _FaceRetouchProfile {
   final double faceLift;
   final double centerGlow;
   final double edgeShade;
-  final double eyeLift;
+  final double skinBrighten;
+  final double cheekPinch;
+  final double chinPinch;
   final double cheekTint;
   final double lipTint;
 
@@ -230,39 +304,23 @@ class _FaceRetouchProfile {
         faceLift: 0,
         centerGlow: 0,
         edgeShade: 0,
-        eyeLift: 0,
+        skinBrighten: 0,
+        cheekPinch: 0,
+        chinPinch: 0,
         cheekTint: 0,
         lipTint: 0,
       ),
-      FaceRetouchLevel.low => const _FaceRetouchProfile(
-        blurRadius: 4,
-        skinSoftness: 0.18,
-        faceLift: 0.020,
-        centerGlow: 0.016,
-        edgeShade: 0.010,
-        eyeLift: 0.010,
-        cheekTint: 0.22,
-        lipTint: 0.18,
-      ),
-      FaceRetouchLevel.medium => const _FaceRetouchProfile(
-        blurRadius: 6,
-        skinSoftness: 0.26,
-        faceLift: 0.032,
-        centerGlow: 0.024,
-        edgeShade: 0.018,
-        eyeLift: 0.016,
-        cheekTint: 0.34,
-        lipTint: 0.24,
-      ),
-      FaceRetouchLevel.high => const _FaceRetouchProfile(
-        blurRadius: 8,
-        skinSoftness: 0.34,
-        faceLift: 0.044,
-        centerGlow: 0.032,
-        edgeShade: 0.026,
-        eyeLift: 0.024,
-        cheekTint: 0.46,
-        lipTint: 0.32,
+      FaceRetouchLevel.cute => const _FaceRetouchProfile(
+        blurRadius: 5,
+        skinSoftness: 0.22,
+        faceLift: 0.030,
+        centerGlow: 0.018,
+        edgeShade: 0.022,
+        skinBrighten: 0.14,
+        cheekPinch: 0.10,
+        chinPinch: 0.06,
+        cheekTint: 0.44,
+        lipTint: 0.34,
       ),
     };
   }

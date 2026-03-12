@@ -1,8 +1,8 @@
 // Uses ML Kit to detect faces once and converts them into normalized editor landmarks.
 /*
 Dependency Memo
-- Depends on: face_feature_detector.dart, detected_face.dart, google_mlkit_face_detection, path_provider, and dart:io temp files.
-- Requires methods: FaceDetector.processImage(), InputImage.fromFilePath(), getTemporaryDirectory().
+- Depends on: face_feature_detector.dart, detected_face.dart, google_mlkit_face_detection, image package normalization helpers, path_provider, and dart:io temp files.
+- Requires methods: FaceDetector.processImage(), InputImage.fromFilePath(), image.decodeImage(), image.bakeOrientation(), image.encodeJpg(), getTemporaryDirectory().
 - Provides methods: detectFaces(), dispose().
 */
 import 'dart:io';
@@ -29,7 +29,7 @@ class MlKitFaceFeatureDetectorImpl implements FaceFeatureDetector {
              options: FaceDetectorOptions(
                enableLandmarks: true,
                enableClassification: true,
-               minFaceSize: 0.08,
+               minFaceSize: 0.04,
                performanceMode: FaceDetectorMode.accurate,
              ),
            );
@@ -39,20 +39,17 @@ class MlKitFaceFeatureDetectorImpl implements FaceFeatureDetector {
 
   @override
   Future<List<DetectedFace>> detectFaces(Uint8List inputBytes) async {
-    final File tempFile = await _writeTempImage(inputBytes);
+    final _PreparedDetectorImage? prepared = _prepareDetectorImage(inputBytes);
+    if (prepared == null) {
+      return const <DetectedFace>[];
+    }
+
+    final File tempFile = await _writeTempImage(prepared.encodedBytes);
     try {
       final InputImage image = InputImage.fromFilePath(tempFile.path);
       final List<Face> faces = await _detector.processImage(image);
-      final img.Image? decoded = img.decodeImage(inputBytes);
-      if (decoded == null) {
-        return const <DetectedFace>[];
-      }
-      final Size imageSize = Size(
-        decoded.width.toDouble(),
-        decoded.height.toDouble(),
-      );
       return faces
-          .map((Face face) => _mapFace(face, imageSize))
+          .map((Face face) => _mapFace(face, prepared.imageSize))
           .toList(growable: false);
     } finally {
       if (await tempFile.exists()) {
@@ -69,8 +66,25 @@ class MlKitFaceFeatureDetectorImpl implements FaceFeatureDetector {
   Future<File> _writeTempImage(Uint8List inputBytes) async {
     final Directory directory = await _tempDirectoryResolver();
     final String timestamp = DateTime.now().microsecondsSinceEpoch.toString();
-    final File file = File('${directory.path}/garake_face_$timestamp.jpg');
+    final File file = File('${directory.path}/garasha_face_$timestamp.jpg');
     return file.writeAsBytes(inputBytes, flush: true);
+  }
+
+  // ML Kit に渡す画像形式と向きを固定して検出失敗を減らす。
+  _PreparedDetectorImage? _prepareDetectorImage(Uint8List inputBytes) {
+    final img.Image? decoded = img.decodeImage(inputBytes);
+    if (decoded == null) {
+      return null;
+    }
+
+    final img.Image normalized = img.bakeOrientation(decoded);
+    return _PreparedDetectorImage(
+      encodedBytes: Uint8List.fromList(img.encodeJpg(normalized, quality: 96)),
+      imageSize: Size(
+        normalized.width.toDouble(),
+        normalized.height.toDouble(),
+      ),
+    );
   }
 
   DetectedFace _mapFace(Face face, Size imageSize) {
@@ -119,4 +133,14 @@ class MlKitFaceFeatureDetectorImpl implements FaceFeatureDetector {
       (landmark.position.y / imageSize.height).clamp(0.0, 1.0),
     );
   }
+}
+
+class _PreparedDetectorImage {
+  const _PreparedDetectorImage({
+    required this.encodedBytes,
+    required this.imageSize,
+  });
+
+  final Uint8List encodedBytes;
+  final Size imageSize;
 }

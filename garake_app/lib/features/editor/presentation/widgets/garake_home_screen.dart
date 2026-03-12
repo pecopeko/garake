@@ -7,6 +7,8 @@ Dependency Memo
 */
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/app_localizations.dart';
+
 part 'garake_home_screen_phone.dart';
 part 'garake_home_screen_controls.dart';
 
@@ -24,12 +26,11 @@ class GarakeHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final DateTime now = DateTime.now();
-    const List<String> weekDays = <String>['月', '火', '水', '木', '金', '土', '日'];
     final String timeText =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final String dateText =
-        "'${(now.year % 100).toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')} (${weekDays[now.weekday - 1]})";
+    final String dateText = l10n.formatHomeDate(now);
 
     return Container(
       key: const Key('editor-empty-canvas'),
@@ -52,10 +53,10 @@ class GarakeHomeScreen extends StatelessWidget {
                   .toDouble();
           final String cameraLabel = actions.isNotEmpty
               ? actions.first.label
-              : '写真を撮る';
+              : l10n.homeTakePhoto;
           final String galleryLabel = actions.length > 1
               ? actions[1].label
-              : '写真を編集する';
+              : l10n.homeEditPhoto;
 
           return Center(
             child: SizedBox(

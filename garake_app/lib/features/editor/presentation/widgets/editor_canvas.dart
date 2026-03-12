@@ -2,7 +2,7 @@
 /*
 Dependency Memo
 - Depends on: sticker_item.dart and canvas_transform.dart model types.
-- Requires methods: onCanvasTransformChanged().
+- Requires methods: onCanvasTransformChanged(), onCameraPressed(), onVideoPressed(), and onEditPhotoPressed().
 - Provides methods: EditorCanvas.build().
 */
 import 'dart:typed_data';
@@ -19,18 +19,22 @@ class EditorCanvas extends StatelessWidget {
     required this.filteredBytes,
     required this.imageSize,
     required this.stickers,
+    required this.showSelectedStickerFrame,
     required this.selectedSourceIndex,
     required this.onCanvasTransformChanged,
     this.onCameraPressed,
+    this.onVideoPressed,
     this.onEditPhotoPressed,
   });
 
   final Uint8List? filteredBytes;
   final Size? imageSize;
   final List<StickerItem> stickers;
+  final bool showSelectedStickerFrame;
   final int selectedSourceIndex;
   final ValueChanged<CanvasTransform> onCanvasTransformChanged;
   final VoidCallback? onCameraPressed;
+  final VoidCallback? onVideoPressed;
   final VoidCallback? onEditPhotoPressed;
 
   @override
@@ -40,6 +44,7 @@ class EditorCanvas extends StatelessWidget {
       return _SourceSelectionView(
         selectedIndex: selectedSourceIndex,
         onCameraPressed: onCameraPressed,
+        onVideoPressed: onVideoPressed,
         onEditPhotoPressed: onEditPhotoPressed,
       );
     }
@@ -84,6 +89,7 @@ class EditorCanvas extends StatelessWidget {
                               key: ValueKey<String>(sticker.id),
                               sticker: sticker,
                               canvasSize: imageRect.size,
+                              showSelectionFrame: showSelectedStickerFrame,
                             ),
                         ],
                       ),
@@ -127,11 +133,13 @@ class _SourceSelectionView extends StatelessWidget {
   const _SourceSelectionView({
     required this.selectedIndex,
     this.onCameraPressed,
+    this.onVideoPressed,
     this.onEditPhotoPressed,
   });
 
   final int selectedIndex;
   final VoidCallback? onCameraPressed;
+  final VoidCallback? onVideoPressed;
   final VoidCallback? onEditPhotoPressed;
 
   @override
@@ -139,6 +147,7 @@ class _SourceSelectionView extends StatelessWidget {
     return GarakeHomeDisplay(
       selectedIndex: selectedIndex,
       onCameraPressed: onCameraPressed,
+      onVideoPressed: onVideoPressed,
       onEditPhotoPressed: onEditPhotoPressed,
     );
   }
@@ -149,10 +158,12 @@ class _StickerOverlay extends StatelessWidget {
     super.key,
     required this.sticker,
     required this.canvasSize,
+    required this.showSelectionFrame,
   });
 
   final StickerItem sticker;
   final Size canvasSize;
+  final bool showSelectionFrame;
 
   @override
   Widget build(BuildContext context) {
@@ -169,24 +180,18 @@ class _StickerOverlay extends StatelessWidget {
       top: top,
       width: baseSize,
       height: baseSize,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: sticker.selected
-              ? Border.all(color: const Color(0xFFF2DB5F), width: 2)
-              : null,
-          borderRadius: BorderRadius.circular(5),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 2,
-              offset: Offset(1, 1),
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Image.asset(sticker.assetPath, filterQuality: FilterQuality.none),
+          if (sticker.selected && showSelectionFrame)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFF2DB5F), width: 2),
+                borderRadius: BorderRadius.circular(5),
+              ),
             ),
-          ],
-        ),
-        child: Image.asset(
-          sticker.assetPath,
-          filterQuality: FilterQuality.none,
-        ),
+        ],
       ),
     );
   }
